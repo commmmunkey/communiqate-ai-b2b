@@ -1,4 +1,4 @@
-import { Home, MonitorPlay, Bot, LogOut } from "lucide-react"
+import { Home, MonitorPlay, Bot } from "lucide-react"
 
 export const items = [
   {
@@ -13,7 +13,7 @@ export const items = [
   },
   {
     title: "AI Interviewer",
-    url: "/dashboard",
+    url: "/ai-interview",
     icon: Bot,
   },
 ]
