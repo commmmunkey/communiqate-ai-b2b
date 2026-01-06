@@ -1,0 +1,1 @@
+export { default } from '@/features/speech-to-text/SpeechToText'
