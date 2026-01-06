@@ -1,4 +1,3 @@
-import { Link } from "react-router"
 import { LogOut } from "lucide-react"
 import {
   Sidebar,
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { items } from "./nav-items"
+import PrefetchLink from "@/components/PrefetchLink"
 
 export default function AppSidebar() {
   return (
@@ -42,11 +42,10 @@ export default function AppSidebar() {
                     asChild
                     className="h-12 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
                   >
-                    {/* Replaced <a> with <Link> to prevent full reload */}
-                    <Link to={item.url} className="flex items-center gap-4 px-4">
+                    <PrefetchLink to={item.url} className="flex items-center gap-4 px-4">
                       <item.icon className="!h-5 !w-5 text-orange-400" />
                       <span className="text-base font-medium">{item.title}</span>
-                    </Link>
+                    </PrefetchLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
