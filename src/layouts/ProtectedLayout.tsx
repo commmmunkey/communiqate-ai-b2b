@@ -2,7 +2,11 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import AppSidebar from "@/features/sidebar"
 import { Outlet, Navigate } from "react-router"
 
-export default function ProtectedLayout({ isAuthenticated }) {
+interface ProtectedLayoutProps {
+  isAuthenticated: boolean;
+}
+
+export default function ProtectedLayout({ isAuthenticated }: ProtectedLayoutProps) {
   if (!isAuthenticated) return <Navigate to="/login" replace />
 
   return (
@@ -21,3 +25,4 @@ export default function ProtectedLayout({ isAuthenticated }) {
     </SidebarProvider>
   )
 }
+

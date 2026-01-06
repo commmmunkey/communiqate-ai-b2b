@@ -1,9 +1,14 @@
 import { Navigate, Route, Routes } from "react-router";
-import Login from "./features/auth/login"
-import ProtectedLayout from './ProtectedLayout';
-import { useState, type ReactNode } from "react";
-import AIInterview from "./pages/AIInterview";
+import { lazy, Suspense, useState } from "react";
+import ErrorBoundary from './layouts/ErrorBoundary';
+import PublicGuard from './layouts/PublicGuard';
+import Loading from './components/Loading';
 import './index.css';
+
+// Lazy load routes
+const Login = lazy(() => import("./features/auth/login"));
+const ProtectedLayout = lazy(() => import('./layouts/ProtectedLayout'));
+const AIInterview = lazy(() => import("./pages/AIInterview"));
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('TOKEN_ID'));
@@ -15,41 +20,30 @@ function App() {
   const isAuthenticated = !!token;
 
   return (
-    <Routes>
-      {/* 2. Wrap the Login route with the PublicGuard */}
-      <Route path="/login" element={
-        <PublicGuard isAuthenticated={isAuthenticated}>
-          <Login onAuthChange={updateAuth} />
-        </PublicGuard>
-      } />
+    <ErrorBoundary>
+      <Suspense fallback={<Loading />}>
+        <Routes>
+          {/* Wrap the Login route with the PublicGuard */}
+          <Route path="/login" element={
+            <PublicGuard isAuthenticated={isAuthenticated}>
+              <Login onAuthChange={updateAuth} />
+            </PublicGuard>
+          } />
 
-      {/* Protected Routes (Only accessible if logged in) */}
-      <Route element={<ProtectedLayout isAuthenticated={isAuthenticated} />}>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<>dashboard</>} />
-        <Route path="/ai-interview" element={<AIInterview />} />
-        <Route path="/profile" element={<>profile</>} />
-      </Route>
+          {/* Protected Routes (Only accessible if logged in) */}
+          <Route element={<ProtectedLayout isAuthenticated={isAuthenticated} />}>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<>dashboard</>} />
+            <Route path="/ai-interview" element={<AIInterview />} />
+            <Route path="/profile" element={<>profile</>} />
+          </Route>
 
-      {/* Catch-all */}
-      <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
-    </Routes>
+          {/* Catch-all */}
+          <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   )
 }
 
 export default App
-
-
-// Guard that redirects logged in users away from public pages
-const PublicGuard = ({ isAuthenticated, children }: {
-  children: ReactNode;
-  isAuthenticated: boolean;
-}) => {
-
-  // If logged in, redirect to root (which then redirects to /dashboard)
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return children;
-};
