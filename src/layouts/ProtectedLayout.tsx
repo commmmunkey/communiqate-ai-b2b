@@ -1,13 +1,15 @@
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
-import AppSidebar from "@/features/sidebar"
-import { Outlet, Navigate } from "react-router"
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import AppSidebar from "@/features/sidebar";
+import { Outlet, Navigate } from "react-router";
 
 interface ProtectedLayoutProps {
   isAuthenticated: boolean;
 }
 
-export default function ProtectedLayout({ isAuthenticated }: ProtectedLayoutProps) {
-  if (!isAuthenticated) return <Navigate to="/login" replace />
+export default function ProtectedLayout({
+  isAuthenticated,
+}: ProtectedLayoutProps) {
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   return (
     <SidebarProvider>
@@ -15,7 +17,7 @@ export default function ProtectedLayout({ isAuthenticated }: ProtectedLayoutProp
         <AppSidebar />
 
         <main className="flex-1 bg-gray-50 dark:bg-slate-950">
-          <div className="p-4">
+          <div className="">
             {/* Trigger is the hamburger menu button for mobile/collapsing */}
             <SidebarTrigger className="mb-4 sm:hidden" />
             <Outlet />
@@ -23,6 +25,5 @@ export default function ProtectedLayout({ isAuthenticated }: ProtectedLayoutProp
         </main>
       </div>
     </SidebarProvider>
-  )
+  );
 }
-
