@@ -10,6 +10,7 @@ const Login = lazy(() => import("./features/auth/login"));
 const ProtectedLayout = lazy(() => import("./layouts/ProtectedLayout"));
 
 const AIInterview = lazy(() => import("./pages/AIInterview"));
+
 const Assessment = lazy(() => import("./pages/Assessment"));
 const AssessmentWritingModule = lazy(
   () => import("./features/assessment/AssessmentWritingModule")
@@ -83,7 +84,6 @@ function App() {
               path="/AssessmentSpeakingResult"
               element={<AssessmentSpeakingResult />}
             />
-            <Route path="/profile" element={<>profile</>} />
           </Route>
 
           {/* Catch-all */}
@@ -91,7 +91,7 @@ function App() {
             path="*"
             element={
               <Navigate
-                to={isAuthenticated ? "/dashboard" : "/login"}
+                to={isAuthenticated ? "/" : "/login"}
                 replace
               />
             }
