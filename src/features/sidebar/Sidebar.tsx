@@ -1,4 +1,3 @@
-import { LogOut } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -9,10 +8,11 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { items } from "./nav-items"
-import PrefetchLink from "@/components/PrefetchLink"
+} from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { items } from "./nav-items";
+import PrefetchLink from "@/components/PrefetchLink";
+import Logout from "./logout";
 
 export default function AppSidebar() {
   return (
@@ -22,11 +22,15 @@ export default function AppSidebar() {
         <div className="flex items-center gap-4">
           <Avatar className="h-10 w-10 border-2 border-slate-700">
             <AvatarImage src="/path-to-avatar.jpg" />
-            <AvatarFallback className="bg-orange-500 text-white font-bold">AS</AvatarFallback>
+            <AvatarFallback className="bg-orange-500 text-white font-bold">
+              AS
+            </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
             <span className="text-xs text-slate-400 font-medium">Hi!</span>
-            <span className="text-sm font-bold text-blue-400">akshya server</span>
+            <span className="text-sm font-bold text-blue-400">
+              akshya server
+            </span>
           </div>
         </div>
       </SidebarHeader>
@@ -42,9 +46,14 @@ export default function AppSidebar() {
                     asChild
                     className="h-12 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
                   >
-                    <PrefetchLink to={item.url} className="flex items-center gap-4 px-4">
+                    <PrefetchLink
+                      to={item.url}
+                      className="flex items-center gap-4 px-4"
+                    >
                       <item.icon className="!h-5 !w-5 text-orange-400" />
-                      <span className="text-base font-medium">{item.title}</span>
+                      <span className="text-base font-medium">
+                        {item.title}
+                      </span>
                     </PrefetchLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -58,18 +67,10 @@ export default function AppSidebar() {
       <SidebarFooter className="bg-slate-900 p-4 border-t border-white/10">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              className="h-12 text-slate-300 hover:bg-red-500/10 hover:text-red-400 transition-colors"
-              onClick={() => console.log("Logging out...")}
-            >
-              <div className="flex items-center gap-4 px-4">
-                <LogOut className="!h-5 !w-5 text-orange-400" />
-                <span className="text-base font-medium">Logout</span>
-              </div>
-            </SidebarMenuButton>
+            <Logout />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }

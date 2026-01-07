@@ -3,7 +3,7 @@ import { Home, MonitorPlay, Bot } from "lucide-react";
 export const items = [
   {
     title: "Home",
-    url: "/dashboard",
+    url: "/",
     icon: Home,
   },
   {

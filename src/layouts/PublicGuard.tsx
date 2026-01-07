@@ -7,12 +7,14 @@ interface PublicGuardProps {
 }
 
 // Guard that redirects logged in users away from public pages
-export default function PublicGuard({ isAuthenticated, children }: PublicGuardProps) {
-  // If logged in, redirect to root (which then redirects to /dashboard)
+export default function PublicGuard({
+  isAuthenticated,
+  children,
+}: PublicGuardProps) {
+  // If logged in, redirect to root (which then redirects to /)
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return children;
 }
-
