@@ -1,0 +1,303 @@
+import OpenAI from "openai";
+
+interface EvaluationScores {
+  clarity?: number;
+  grammar?: number;
+  tone?: number;
+  content?: number;
+  pronunciation?: number;
+  fluency?: number;
+  overall: number;
+}
+
+interface EvaluationFeedback {
+  detailed: string;
+}
+
+interface EvaluationResult {
+  scores: EvaluationScores;
+  feedback: EvaluationFeedback;
+  rawEvaluation: string;
+}
+
+class OpenAIEvaluationService {
+  private client: OpenAI;
+  private writingPrompt: string;
+  private speakingPrompt: string;
+
+  constructor() {
+    this.client = new OpenAI({
+      apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+      dangerouslyAllowBrowser: true,
+    });
+
+    // Standardized evaluation prompts
+    this.writingPrompt = `You are a professional writing assessor for business English. Evaluate the following business writing response based on these criteria:
+
+1. Clarity and Organization (1-10): How well-structured and clear the response is
+2. Grammar and Vocabulary (1-10): Accuracy of grammar and appropriateness of vocabulary
+3. Professional Tone (1-10): How professional and business-appropriate the tone is
+4. Content Relevance (1-10): How well the response addresses the given prompt
+
+Provide your evaluation in this exact format:
+SCORES:
+- Clarity and Organization: [score]/10
+- Grammar and Vocabulary: [score]/10
+- Professional Tone: [score]/10
+- Content Relevance: [score]/10
+- Overall Score: [average]/10
+
+FEEDBACK:
+[Detailed feedback with specific improvement suggestions]
+
+Here is the writing prompt and response to evaluate:
+PROMPT: {prompt}
+RESPONSE: {response}`;
+
+    this.speakingPrompt = `You are a professional speaking assessor for business English. Evaluate the following transcribed speaking response based on these criteria:
+
+1. Pronunciation and Clarity (1-10): How clear and understandable the speech is
+2. Fluency and Pace (1-10): How smooth and natural the speech flow is
+3. Grammar and Vocabulary (1-10): Accuracy of grammar and appropriateness of vocabulary
+4. Content Organization (1-10): How well-structured and coherent the response is
+
+Provide your evaluation in this exact format:
+SCORES:
+- Pronunciation and Clarity: [score]/10
+- Fluency and Pace: [score]/10
+- Grammar and Vocabulary: [score]/10
+- Content Organization: [score]/10
+- Overall Score: [average]/10
+
+FEEDBACK:
+[Detailed feedback with specific improvement suggestions]
+
+Here is the speaking prompt and transcribed response to evaluate:
+PROMPT: {prompt}
+TRANSCRIPTION: {transcription}`;
+  }
+
+  async evaluateWriting(
+    prompt: string,
+    response: string
+  ): Promise<EvaluationResult> {
+    try {
+      const evaluationPrompt = this.writingPrompt
+        .replace("{prompt}", prompt)
+        .replace("{response}", response);
+
+      const completion = await this.client.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: evaluationPrompt,
+          },
+        ],
+        max_tokens: 800,
+        temperature: 0.7,
+      });
+
+      const evaluationText = completion.choices[0].message.content || "";
+      return this.extractWritingScores(evaluationText);
+    } catch (error) {
+      console.error("Error evaluating writing:", error);
+      throw new Error(
+        `Writing evaluation failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  async evaluateSpeaking(
+    prompt: string,
+    transcription: string
+  ): Promise<EvaluationResult> {
+    try {
+      const evaluationPrompt = this.speakingPrompt
+        .replace("{prompt}", prompt)
+        .replace("{transcription}", transcription);
+
+      const completion = await this.client.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: evaluationPrompt,
+          },
+        ],
+        max_tokens: 800,
+        temperature: 0.7,
+      });
+
+      const evaluationText = completion.choices[0].message.content || "";
+      return this.extractSpeakingScores(evaluationText);
+    } catch (error) {
+      console.error("Error evaluating speaking:", error);
+      throw new Error(
+        `Speaking evaluation failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  async transcribeAudio(audioBlob: Blob): Promise<string> {
+    try {
+      const audioFile = new File([audioBlob], "audio.webm", {
+        type: "audio/webm",
+      });
+
+      const transcription = await this.client.audio.transcriptions.create({
+        file: audioFile,
+        model: "whisper-1",
+      });
+
+      return transcription.text;
+    } catch (error) {
+      console.error("Error transcribing audio:", error);
+      throw new Error(
+        `Audio transcription failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  private extractWritingScores(evaluationText: string): EvaluationResult {
+    try {
+      const scores: EvaluationScores = { overall: 0 };
+      const feedback: EvaluationFeedback = { detailed: "" };
+
+      // Extract individual scores
+      const clarityMatch = evaluationText.match(
+        /Clarity and Organization:\s*(\d+(?:\.\d+)?)/i
+      );
+      const grammarMatch = evaluationText.match(
+        /Grammar and Vocabulary:\s*(\d+(?:\.\d+)?)/i
+      );
+      const toneMatch = evaluationText.match(
+        /Professional Tone:\s*(\d+(?:\.\d+)?)/i
+      );
+      const contentMatch = evaluationText.match(
+        /Content Relevance:\s*(\d+(?:\.\d+)?)/i
+      );
+      const overallMatch = evaluationText.match(
+        /Overall Score:\s*(\d+(?:\.\d+)?)/i
+      );
+
+      scores.clarity = clarityMatch ? parseFloat(clarityMatch[1]) : 0;
+      scores.grammar = grammarMatch ? parseFloat(grammarMatch[1]) : 0;
+      scores.tone = toneMatch ? parseFloat(toneMatch[1]) : 0;
+      scores.content = contentMatch ? parseFloat(contentMatch[1]) : 0;
+      scores.overall = overallMatch ? parseFloat(overallMatch[1]) : 0;
+
+      // Extract feedback section
+      const feedbackMatch = evaluationText.match(
+        /FEEDBACK:\s*([\s\S]*?)(?=\n\n|$)/i
+      );
+      feedback.detailed = feedbackMatch
+        ? feedbackMatch[1].trim()
+        : "No detailed feedback available.";
+
+      return {
+        scores,
+        feedback,
+        rawEvaluation: evaluationText,
+      };
+    } catch (error) {
+      console.error("Error extracting writing scores:", error);
+      return {
+        scores: { overall: 0 },
+        feedback: { detailed: "Error processing evaluation." },
+        rawEvaluation: evaluationText,
+      };
+    }
+  }
+
+  private extractSpeakingScores(evaluationText: string): EvaluationResult {
+    try {
+      const scores: EvaluationScores = { overall: 0 };
+      const feedback: EvaluationFeedback = { detailed: "" };
+
+      // Extract individual scores
+      const pronunciationMatch = evaluationText.match(
+        /Pronunciation and Clarity:\s*(\d+(?:\.\d+)?)/i
+      );
+      const fluencyMatch = evaluationText.match(
+        /Fluency and Pace:\s*(\d+(?:\.\d+)?)/i
+      );
+      const grammarMatch = evaluationText.match(
+        /Grammar and Vocabulary:\s*(\d+(?:\.\d+)?)/i
+      );
+      const contentMatch = evaluationText.match(
+        /Content Organization:\s*(\d+(?:\.\d+)?)/i
+      );
+      const overallMatch = evaluationText.match(
+        /Overall Score:\s*(\d+(?:\.\d+)?)/i
+      );
+
+      scores.pronunciation = pronunciationMatch
+        ? parseFloat(pronunciationMatch[1])
+        : 0;
+      scores.fluency = fluencyMatch ? parseFloat(fluencyMatch[1]) : 0;
+      scores.grammar = grammarMatch ? parseFloat(grammarMatch[1]) : 0;
+      scores.content = contentMatch ? parseFloat(contentMatch[1]) : 0;
+      scores.overall = overallMatch ? parseFloat(overallMatch[1]) : 0;
+
+      // Extract feedback section
+      const feedbackMatch = evaluationText.match(
+        /FEEDBACK:\s*([\s\S]*?)(?=\n\n|$)/i
+      );
+      feedback.detailed = feedbackMatch
+        ? feedbackMatch[1].trim()
+        : "No detailed feedback available.";
+
+      return {
+        scores,
+        feedback,
+        rawEvaluation: evaluationText,
+      };
+    } catch (error) {
+      console.error("Error extracting speaking scores:", error);
+      return {
+        scores: { overall: 0 },
+        feedback: { detailed: "Error processing evaluation." },
+        rawEvaluation: evaluationText,
+      };
+    }
+  }
+
+  async retryEvaluation<T>(
+    evaluationFunction: () => Promise<T>,
+    maxRetries: number = 3
+  ): Promise<T> {
+    let lastError: Error | unknown;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await evaluationFunction();
+      } catch (error) {
+        lastError = error;
+        console.warn(
+          `Evaluation attempt ${attempt} failed:`,
+          error instanceof Error ? error.message : "Unknown error"
+        );
+
+        if (attempt < maxRetries) {
+          // Wait before retrying (exponential backoff)
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.pow(2, attempt) * 1000)
+          );
+        }
+      }
+    }
+
+    throw lastError;
+  }
+}
+
+// Create singleton instance
+const openAIEvaluationService = new OpenAIEvaluationService();
+export default openAIEvaluationService;

@@ -2,7 +2,8 @@ import { Link, type LinkProps } from "react-router";
 
 // Map routes that should be prefetched
 const prefetchRoutes: Record<string, () => Promise<unknown>> = {
-  '/ai-interview': () => import('@/pages/AIInterview'),
+  "/ai-interview": () => import("@/pages/AIInterview"),
+  "/assessment": () => import("@/pages/Assessment"),
 };
 
 interface PrefetchLinkProps extends LinkProps {
@@ -10,7 +11,11 @@ interface PrefetchLinkProps extends LinkProps {
   children: React.ReactNode;
 }
 
-export default function PrefetchLink({ to, children, ...props }: PrefetchLinkProps) {
+export default function PrefetchLink({
+  to,
+  children,
+  ...props
+}: PrefetchLinkProps) {
   const handleMouseEnter = () => {
     const preload = prefetchRoutes[to];
     if (preload) preload();
@@ -22,4 +27,3 @@ export default function PrefetchLink({ to, children, ...props }: PrefetchLinkPro
     </Link>
   );
 }
-

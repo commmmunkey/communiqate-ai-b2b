@@ -1,4 +1,4 @@
-import { Home, MonitorPlay, Bot } from "lucide-react"
+import { Home, MonitorPlay, Bot } from "lucide-react";
 
 export const items = [
   {
@@ -8,7 +8,7 @@ export const items = [
   },
   {
     title: "Assessment tool",
-    url: "/profile",
+    url: "/assessment",
     icon: MonitorPlay,
   },
   {
@@ -16,4 +16,4 @@ export const items = [
     url: "/ai-interview",
     icon: Bot,
   },
-]
+];
