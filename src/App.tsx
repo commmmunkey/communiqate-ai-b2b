@@ -76,28 +76,28 @@ function App() {
             <Route path="/" element={<NewHome />} />
             <Route path="/ai-interview" element={<AIInterview />} />
             <Route path="/assessment" element={<Assessment />} />
+            <Route
+              path="/assessment/writing"
+              element={<AssessmentWritingModule />}
+            />
+            <Route
+              path="/assessment/speaking"
+              element={<AssessmentSpeakingModule />}
+            />
+            <Route
+              path="/assessment/writing-result"
+              element={<AssessmentWritingResult />}
+            />
+            <Route
+              path="/assessment/speaking-result"
+              element={<AssessmentSpeakingResult />}
+            />
             <Route path="/LUTest" element={<LUTest />} />
             <Route path="/LUResult" element={<LUResult />} />
             <Route path="/WritingModule" element={<WritingModule />} />
             <Route path="/SpeakingModule" element={<SpeakingModule />} />
             <Route path="/WritingResult" element={<WritingResult />} />
             <Route path="/SpeakingResult" element={<SpeakingResult />} />
-            <Route
-              path="/AssessmentWritingModule"
-              element={<AssessmentWritingModule />}
-            />
-            <Route
-              path="/AssessmentSpeakingModule"
-              element={<AssessmentSpeakingModule />}
-            />
-            <Route
-              path="/AssessmentWritingResult"
-              element={<AssessmentWritingResult />}
-            />
-            <Route
-              path="/AssessmentSpeakingResult"
-              element={<AssessmentSpeakingResult />}
-            />
           </Route>
 
           {/* Catch-all */}

@@ -1,5 +1,77 @@
 import { create } from 'zustand';
 
+// Types for Assessment Progress
+export interface Question {
+  queID: number;
+  moduleID?: number;
+  queQuestion?: string;
+  question?: string;
+  queType?: string;
+  queCorrectAns?: string;
+  queSolution?: string;
+  queVerificationRequred?: string;
+  queFile?: string;
+  lessionID?: string;
+  correctoption?: string;
+  questiontype?: string;
+  option1?: string;
+  option2?: string;
+  option3?: string;
+  option4?: string;
+  queOption1?: string;
+  queOption2?: string;
+  queOption3?: string;
+  queOption4?: string;
+  queOptions?: Array<{ optionID: string; optionText: string }>;
+}
+
+export interface Answer {
+  answerIsCorrect: string;
+  answerIsVerified: string;
+  queID: number;
+  answerAnswer: string;
+  answerCorrectAnswer: string;
+  score?: number;
+}
+
+export type SectionType = 'general' | 'reading' | 'listening' | 'writing' | 'speaking';
+
+interface AssessmentProgressState {
+  // Navigation state
+  currentSection: SectionType;
+  currentQuestionIndex: number;
+  
+  // Answer state
+  answers: Record<number, string>;
+  selectedOptions: Record<number, number>;
+  arrAnswers: Answer[];
+  arrGeneralAnswers: Answer[];
+  
+  // Questions state
+  arrGeneralQuestions: Question[];
+  
+  // Progress tracking
+  isAssessmentInProgress: boolean;
+  timeRemaining: number;
+  assessmentStartedAt: number | null;
+  
+  // Actions (setters)
+  setCurrentSection: (section: SectionType) => void;
+  setCurrentQuestionIndex: (index: number) => void;
+  setAnswers: (answers: Record<number, string>) => void;
+  updateAnswer: (questionId: number, answer: string) => void;
+  setSelectedOptions: (options: Record<number, number>) => void;
+  updateSelectedOption: (questionId: number, optionIndex: number) => void;
+  setArrAnswers: (answers: Answer[]) => void;
+  addAnswer: (answer: Answer) => void;
+  setArrGeneralAnswers: (answers: Answer[]) => void;
+  addGeneralAnswer: (answer: Answer) => void;
+  setArrGeneralQuestions: (questions: Question[]) => void;
+  setTimeRemaining: (time: number | ((prev: number) => number)) => void;
+  startAssessment: () => void;
+  resetAssessment: () => void;
+}
+
 interface EvaluationLoadingState {
   isVisible: boolean;
   message: string;
@@ -143,6 +215,9 @@ interface StoreState {
   setWritingModule: (state: WritingModuleState | ((prev: WritingModuleState) => WritingModuleState)) => void;
   speakingModule: SpeakingModuleState;
   setSpeakingModule: (state: SpeakingModuleState | ((prev: SpeakingModuleState) => SpeakingModuleState)) => void;
+  // Assessment Progress State
+  assessmentProgress: AssessmentProgressState;
+  setAssessmentProgress: (state: AssessmentProgressState | ((prev: AssessmentProgressState) => AssessmentProgressState)) => void;
 }
 
 export const useStore = create<StoreState>((set) => ({
@@ -298,5 +373,172 @@ export const useStore = create<StoreState>((set) => ({
   },
   setSpeakingModule: (state) => set((prev) => ({
     speakingModule: typeof state === 'function' ? state(prev.speakingModule) : state
+  })),
+  // Assessment Progress State
+  assessmentProgress: {
+    currentSection: 'general',
+    currentQuestionIndex: 0,
+    answers: {},
+    selectedOptions: {},
+    arrAnswers: [],
+    arrGeneralAnswers: [],
+    arrGeneralQuestions: [],
+    isAssessmentInProgress: false,
+    timeRemaining: 1200,
+    assessmentStartedAt: null,
+    
+    // Actions implementation
+    setCurrentSection: (section) => set((state) => ({
+      assessmentProgress: {
+        ...state.assessmentProgress,
+        currentSection: section,
+        // Reset question index when section changes
+        currentQuestionIndex: 0
+      }
+    })),
+    
+    setCurrentQuestionIndex: (index) => set((state) => ({
+      assessmentProgress: {
+        ...state.assessmentProgress,
+        currentQuestionIndex: index
+      }
+    })),
+    
+    setAnswers: (answers) => set((state) => ({
+      assessmentProgress: {
+        ...state.assessmentProgress,
+        answers
+      }
+    })),
+    
+    updateAnswer: (questionId, answer) => set((state) => ({
+      assessmentProgress: {
+        ...state.assessmentProgress,
+        answers: {
+          ...state.assessmentProgress.answers,
+          [questionId]: answer
+        }
+      }
+    })),
+    
+    setSelectedOptions: (options) => set((state) => ({
+      assessmentProgress: {
+        ...state.assessmentProgress,
+        selectedOptions: options
+      }
+    })),
+    
+    updateSelectedOption: (questionId, optionIndex) => set((state) => ({
+      assessmentProgress: {
+        ...state.assessmentProgress,
+        selectedOptions: {
+          ...state.assessmentProgress.selectedOptions,
+          [questionId]: optionIndex
+        }
+      }
+    })),
+    
+    setArrAnswers: (answers) => set((state) => ({
+      assessmentProgress: {
+        ...state.assessmentProgress,
+        arrAnswers: answers
+      }
+    })),
+    
+    addAnswer: (answer) => set((state) => {
+      const existingIndex = state.assessmentProgress.arrAnswers.findIndex(
+        (a) => a.queID === answer.queID
+      );
+      if (existingIndex !== -1) {
+        const updated = [...state.assessmentProgress.arrAnswers];
+        updated[existingIndex] = answer;
+        return {
+          assessmentProgress: {
+            ...state.assessmentProgress,
+            arrAnswers: updated
+          }
+        };
+      }
+      return {
+        assessmentProgress: {
+          ...state.assessmentProgress,
+          arrAnswers: [...state.assessmentProgress.arrAnswers, answer]
+        }
+      };
+    }),
+    
+    setArrGeneralAnswers: (answers) => set((state) => ({
+      assessmentProgress: {
+        ...state.assessmentProgress,
+        arrGeneralAnswers: answers
+      }
+    })),
+    
+    addGeneralAnswer: (answer) => set((state) => {
+      const existingIndex = state.assessmentProgress.arrGeneralAnswers.findIndex(
+        (a) => a.queID === answer.queID
+      );
+      if (existingIndex !== -1) {
+        const updated = [...state.assessmentProgress.arrGeneralAnswers];
+        updated[existingIndex] = answer;
+        return {
+          assessmentProgress: {
+            ...state.assessmentProgress,
+            arrGeneralAnswers: updated
+          }
+        };
+      }
+      return {
+        assessmentProgress: {
+          ...state.assessmentProgress,
+          arrGeneralAnswers: [...state.assessmentProgress.arrGeneralAnswers, answer]
+        }
+      };
+    }),
+    
+    setArrGeneralQuestions: (questions) => set((state) => ({
+      assessmentProgress: {
+        ...state.assessmentProgress,
+        arrGeneralQuestions: questions
+      }
+    })),
+    
+    setTimeRemaining: (time) => set((state) => ({
+      assessmentProgress: {
+        ...state.assessmentProgress,
+        timeRemaining: typeof time === 'function' 
+          ? time(state.assessmentProgress.timeRemaining)
+          : time
+      }
+    })),
+    
+    startAssessment: () => set((state) => ({
+      assessmentProgress: {
+        ...state.assessmentProgress,
+        isAssessmentInProgress: true,
+        assessmentStartedAt: Date.now()
+      }
+    })),
+    
+    resetAssessment: () => set((state) => ({
+      assessmentProgress: {
+        currentSection: 'general',
+        currentQuestionIndex: 0,
+        answers: {},
+        selectedOptions: {},
+        arrAnswers: [],
+        arrGeneralAnswers: [],
+        arrGeneralQuestions: [],
+        isAssessmentInProgress: false,
+        timeRemaining: 1200,
+        assessmentStartedAt: null
+      }
+    }))
+  },
+  
+  setAssessmentProgress: (state) => set((prev) => ({
+    assessmentProgress: typeof state === 'function' 
+      ? state(prev.assessmentProgress) 
+      : state
   })),
 }));

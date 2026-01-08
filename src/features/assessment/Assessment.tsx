@@ -2,7 +2,12 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { OpenAI } from "openai";
-import { useStore } from "@/store";
+import {
+  useStore,
+  type Question,
+  type Answer,
+  type SectionType,
+} from "@/store";
 import { environment } from "./environment";
 import Loading from "./components/Loading";
 import PreAssessmentModal from "./components/PreAssessmentModal";
@@ -16,11 +21,23 @@ import readingLogo from "./readinglogo.png";
 
 const NewAssessment = () => {
   const navigate = useNavigate();
-  const { arrAssesmentQuestion, setArrAssesmentQuestion } = useStore();
+  const { arrAssesmentQuestion, setArrAssesmentQuestion, assessmentProgress } =
+    useStore();
 
-  // State management
+  // Destructure assessment progress state for easier access
+  const {
+    currentSection,
+    currentQuestionIndex,
+    answers,
+    selectedOptions,
+    arrAnswers,
+    arrGeneralAnswers,
+    arrGeneralQuestions,
+    timeRemaining,
+  } = assessmentProgress;
+
+  // Local state management (UI-only, not persisted)
   const [isRecording, setIsRecording] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(1200);
   const [isLessonPDFWatch, setIsLessonPDFWatch] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -39,21 +56,13 @@ const NewAssessment = () => {
   const [isAlreadyModalOpen, setIsAlreadyModalOpen] = useState(false);
   const [isloading, setIsloading] = useState(false);
   const [isQuestionAvailable, setIsQuestionAvailable] = useState(false);
-  const [arrGeneralQuestions, setArrGeneralQuestions] = useState<Question[]>(
-    [],
-  );
   const [firstQuestionWithAudio, setfirstQuestionWithAudio] = useState("");
   const [firstQuestionWithAudioID, setfirstQuestionWithAudioID] =
     useState<number>(0);
   const [firstQuestionWithPDF, setfirstQuestionWithPDF] = useState("");
   const [lessionId, setlessionId] = useState("");
   const [totalAnsweredQuestions, settotalAnsweredQuestions] = useState(0);
-  const [arrAnswers, setArrAnswers] = useState<Answer[]>([]);
-  const [arrGeneralAnswers, setArrGeneralAnswers] = useState<Answer[]>([]);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
   const [currentQuestion, setCurrentQuestion] = useState(1);
-  const [currentSection, setCurrentSection] = useState<SectionType>("general");
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [moduleScores, setModuleScores] = useState<ModuleScores>({
     general: 0,
     reading: 0,
@@ -62,9 +71,6 @@ const NewAssessment = () => {
   const [isCalculatingScore, setIsCalculatingScore] = useState(false);
   const [calculatedScores, setCalculatedScores] =
     useState<CalculatedScores | null>(null);
-  const [selectedOptions, setSelectedOptions] = useState<
-    Record<number, number>
-  >({});
   const [blobUrl, setBlobUrl] = useState("");
 
   const userId = localStorage.getItem("USER_ID") || "";
@@ -101,7 +107,7 @@ const NewAssessment = () => {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeRemaining((prevTime) => {
+      assessmentProgress.setTimeRemaining((prevTime) => {
         if (prevTime <= 0) {
           clearInterval(timer);
           return 0;
@@ -157,49 +163,76 @@ const NewAssessment = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Restore file URLs when questions are available (handles navigation back from writing/speaking modules)
+  useEffect(() => {
+    if (
+      assessmentProgress.isAssessmentInProgress &&
+      arrAssesmentQuestion.length > 0
+    ) {
+      const firstQuestionWithAudioObj = arrAssesmentQuestion.find(
+        (q: Question) => q.moduleID === 11 && q.queFile,
+      );
+      const firstQuestionWithPDFObj = arrAssesmentQuestion.find(
+        (q: Question) => q.moduleID === 8 && q.queFile,
+      );
+      const lessIdObj = arrAssesmentQuestion.find((q: Question) => q.lessionID);
+
+      if (firstQuestionWithAudioObj && firstQuestionWithAudioObj.queFile) {
+        setfirstQuestionWithAudio(firstQuestionWithAudioObj.queFile);
+        setfirstQuestionWithAudioID(firstQuestionWithAudioObj.queID || 0);
+      }
+      if (firstQuestionWithPDFObj && firstQuestionWithPDFObj.queFile) {
+        setfirstQuestionWithPDF(firstQuestionWithPDFObj.queFile);
+      }
+      if (lessIdObj && lessIdObj.lessionID) {
+        setlessionId(lessIdObj.lessionID);
+      }
+    }
+  }, [assessmentProgress.isAssessmentInProgress, arrAssesmentQuestion]);
+
   const handleSectionClick = (section: SectionType) => {
     if (sections[section].length > 0) {
-      if (section === "writing") {
-        const currentScores: CalculatedScores = {
-          assessment_generalScore: moduleScores.general || 0,
-          assessment_readingScore: moduleScores.reading || 0,
-          assessment_listeningScore: moduleScores.listening || 0,
-          assessment_writingScore: 0,
-          assessment_speakingScore: 0,
-        };
-        localStorage.setItem(
-          "ASSESSMENT_FINAL_SCORES",
-          JSON.stringify(currentScores),
-        );
-        // console.log("Stored scores before writing module:", currentScores);
-        navigate("/AssessmentWritingModule");
-        return;
-      } else if (section === "speaking") {
-        const currentScores: CalculatedScores = {
-          assessment_generalScore: moduleScores.general || 0,
-          assessment_readingScore: moduleScores.reading || 0,
-          assessment_listeningScore: moduleScores.listening || 0,
-          assessment_writingScore: 0,
-          assessment_speakingScore: 0,
-        };
-        localStorage.setItem(
-          "ASSESSMENT_FINAL_SCORES",
-          JSON.stringify(currentScores),
-        );
-        // console.log("Stored scores before speaking module:", currentScores);
-        navigate("/AssessmentSpeakingModule");
-        return;
-      }
+      // if (section === "writing") {
+      //   const currentScores: CalculatedScores = {
+      //     assessment_generalScore: moduleScores.general || 0,
+      //     assessment_readingScore: moduleScores.reading || 0,
+      //     assessment_listeningScore: moduleScores.listening || 0,
+      //     assessment_writingScore: 0,
+      //     assessment_speakingScore: 0,
+      //   };
+      //   localStorage.setItem(
+      //     "ASSESSMENT_FINAL_SCORES",
+      //     JSON.stringify(currentScores),
+      //   );
+      //   // console.log("Stored scores before writing module:", currentScores);
+      //   navigate("/assessment/writing");
+      //   return;
+      // } else if (section === "speaking") {
+      //   const currentScores: CalculatedScores = {
+      //     assessment_generalScore: moduleScores.general || 0,
+      //     assessment_readingScore: moduleScores.reading || 0,
+      //     assessment_listeningScore: moduleScores.listening || 0,
+      //     assessment_writingScore: 0,
+      //     assessment_speakingScore: 0,
+      //   };
+      //   localStorage.setItem(
+      //     "ASSESSMENT_FINAL_SCORES",
+      //     JSON.stringify(currentScores),
+      //   );
+      //   // console.log("Stored scores before speaking module:", currentScores);
+      //   navigate("/assessment/speaking");
+      //   return;
+      // }
 
-      setCurrentSection(section);
-      setCurrentQuestionIndex(0);
+      assessmentProgress.setCurrentSection(section);
+      assessmentProgress.setCurrentQuestionIndex(0);
     }
   };
 
   const handleNext = async () => {
     const currentSectionQuestions = sections[currentSection];
     if (currentQuestionIndex < currentSectionQuestions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      assessmentProgress.setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
       // console.log(`=== COMPLETING ${currentSection.toUpperCase()} MODULE ===`);
 
@@ -210,8 +243,8 @@ const NewAssessment = () => {
           arrGeneralAnswers,
         );
         // console.log("General module completed. Moving to reading module.");
-        setCurrentSection("reading");
-        setCurrentQuestionIndex(0);
+        assessmentProgress.setCurrentSection("reading");
+        assessmentProgress.setCurrentQuestionIndex(0);
       } else if (currentSection === "reading") {
         const readingQuestions = arrAssesmentQuestion.filter(
           (q: Question) => q.moduleID === 8,
@@ -224,8 +257,8 @@ const NewAssessment = () => {
         });
         await calculateModuleScore("reading", readingQuestions, readingAnswers);
         // console.log("Reading module completed. Moving to listening module.");
-        setCurrentSection("listening");
-        setCurrentQuestionIndex(0);
+        assessmentProgress.setCurrentSection("listening");
+        assessmentProgress.setCurrentQuestionIndex(0);
       } else if (currentSection === "listening") {
         const listeningQuestions = arrAssesmentQuestion.filter(
           (q: Question) => q.moduleID === 11,
@@ -242,31 +275,33 @@ const NewAssessment = () => {
           listeningAnswers,
         );
         // console.log("Listening module completed. Moving to writing module.");
-        setCurrentSection("writing");
-        setCurrentQuestionIndex(0);
+        assessmentProgress.setCurrentSection("writing");
+        assessmentProgress.setCurrentQuestionIndex(0);
       } else if (currentSection === "writing") {
-        setCurrentSection("speaking");
-        setCurrentQuestionIndex(0);
+        assessmentProgress.setCurrentSection("speaking");
+        assessmentProgress.setCurrentQuestionIndex(0);
       }
     }
   };
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
+      assessmentProgress.setCurrentQuestionIndex(currentQuestionIndex - 1);
     } else {
       if (currentSection === "reading") {
-        setCurrentSection("general");
-        setCurrentQuestionIndex(sections.general.length - 1);
+        assessmentProgress.setCurrentSection("general");
+        assessmentProgress.setCurrentQuestionIndex(sections.general.length - 1);
       } else if (currentSection === "listening") {
-        setCurrentSection("reading");
-        setCurrentQuestionIndex(sections.reading.length - 1);
+        assessmentProgress.setCurrentSection("reading");
+        assessmentProgress.setCurrentQuestionIndex(sections.reading.length - 1);
       } else if (currentSection === "writing") {
-        setCurrentSection("listening");
-        setCurrentQuestionIndex(sections.listening.length - 1);
+        assessmentProgress.setCurrentSection("listening");
+        assessmentProgress.setCurrentQuestionIndex(
+          sections.listening.length - 1,
+        );
       } else if (currentSection === "speaking") {
-        setCurrentSection("writing");
-        setCurrentQuestionIndex(sections.writing.length - 1);
+        assessmentProgress.setCurrentSection("writing");
+        assessmentProgress.setCurrentQuestionIndex(sections.writing.length - 1);
       }
     }
   };
@@ -878,7 +913,7 @@ ${transcription.text}`,
           return answer;
         });
 
-        setArrAnswers(updatedAnswers);
+        assessmentProgress.setArrAnswers(updatedAnswers);
         uploadImageToServer();
       } catch (error) {
         console.error("Error uploading assessment files:", error);
@@ -1210,6 +1245,17 @@ ${transcription.text}`,
   const checktheStatus = () => {
     try {
       setIsloading(true);
+
+      // Check if assessment is already in progress (from Zustand)
+      if (assessmentProgress.isAssessmentInProgress) {
+        // Assessment is in progress - restore state and continue
+        setIsloading(false);
+        setIsPreModalOpen(false); // Don't show PreModal
+        // State is already in Zustand, component will use it
+        return;
+      }
+
+      // Fresh start - check API status
       const dictParameter = JSON.stringify([
         {
           loginUserID: userId,
@@ -1340,6 +1386,8 @@ ${transcription.text}`,
         .then((response) => response.json())
         .then(() => {
           // console.log("responseJson for exam submit " + JSON.stringify(responseJson));
+          // Clear assessment progress after successful submission
+          assessmentProgress.resetAssessment();
           setIsModalOpen(true);
           setIsloading(false);
         })
@@ -1361,10 +1409,7 @@ ${transcription.text}`,
       setRecording(false);
       setIsRecording(false);
       mediaRecorder.stream.getTracks().forEach((track) => track.stop());
-      setSelectedOptions((prevState) => ({
-        ...prevState,
-        [firstQuestionWithAudioID]: 0,
-      }));
+      assessmentProgress.updateSelectedOption(firstQuestionWithAudioID, 0);
 
       // const currentQue = arrAssesmentQuestion.find((que: Question) => que.queID === firstQuestionWithAudioID);
       const updatedAnswers = { ...answers };
@@ -1374,7 +1419,7 @@ ${transcription.text}`,
           answers[firstQuestionWithAudioID];
       }
 
-      setAnswers(updatedAnswers);
+      assessmentProgress.setAnswers(updatedAnswers);
 
       const answer: Answer = {
         answerIsCorrect: "Pending",
@@ -1384,15 +1429,12 @@ ${transcription.text}`,
         answerCorrectAnswer: "na",
       };
 
-      setArrAnswers((prevArrAnswers) => [...prevArrAnswers, answer]);
+      assessmentProgress.addAnswer(answer);
     }
   };
 
   const handleOptionClick = (questionId: number, optionIdx: number) => {
-    setSelectedOptions((prevState) => ({
-      ...prevState,
-      [questionId]: optionIdx,
-    }));
+    assessmentProgress.updateSelectedOption(questionId, optionIdx);
 
     let currentQue: Question | undefined;
     if (currentSection === "general") {
@@ -1403,24 +1445,16 @@ ${transcription.text}`,
       );
     }
 
-    const updatedAnswers = { ...answers };
-
     const isGeneralQuestion = currentSection === "general";
     const questionType = isGeneralQuestion ? "MCQ" : currentQue?.queType;
     const correctAnswer = isGeneralQuestion
       ? currentQue?.correctoption
       : currentQue?.queCorrectAns;
 
+    // Update answers object
     if (questionType === "MCQ") {
-      updatedAnswers[questionId] =
-        selectedOptions[questionId] !== undefined
-          ? `Option${selectedOptions[questionId] + 1}`
-          : "";
-    } else {
-      updatedAnswers[questionId] = answers[questionId];
+      assessmentProgress.updateAnswer(questionId, `Option${optionIdx + 1}`);
     }
-
-    setAnswers(updatedAnswers);
 
     const answer: Answer = {
       answerIsCorrect:
@@ -1449,12 +1483,9 @@ ${transcription.text}`,
     };
 
     if (isGeneralQuestion) {
-      setArrGeneralAnswers((prevArrGeneralAnswers) => [
-        ...prevArrGeneralAnswers,
-        answer,
-      ]);
+      assessmentProgress.addGeneralAnswer(answer);
     } else {
-      setArrAnswers((prevArrAnswers) => [...prevArrAnswers, answer]);
+      assessmentProgress.addAnswer(answer);
     }
   };
 
@@ -1465,6 +1496,7 @@ ${transcription.text}`,
   const getAssesmentQuestions = () => {
     try {
       setIsloading(true);
+      assessmentProgress.startAssessment(); // Mark as started
       getGeneralQuestions();
     } catch {
       setIsloading(false);
@@ -1502,13 +1534,14 @@ ${transcription.text}`,
         .then((responseJson) => {
           // console.log("General Questions Response: ", JSON.stringify(responseJson));
           if (responseJson[0].data && responseJson[0].data.length > 0) {
-            setArrGeneralQuestions(responseJson[0].data);
-            setAnswers((prevAnswers) => ({
-              ...prevAnswers,
-              ...Object.fromEntries(
-                responseJson[0].data.map((q: Question) => [q.queID, ""]),
-              ),
-            }));
+            assessmentProgress.setArrGeneralQuestions(responseJson[0].data);
+            const newAnswers = Object.fromEntries(
+              responseJson[0].data.map((q: Question) => [q.queID, ""]),
+            );
+            assessmentProgress.setAnswers({
+              ...answers,
+              ...newAnswers,
+            });
           }
           getRegularQuestions();
         })
@@ -1553,12 +1586,13 @@ ${transcription.text}`,
           // console.log("Regular Questions Response: ", JSON.stringify(responseJson));
           if (responseJson[0].data && responseJson[0].data.length > 0) {
             setArrAssesmentQuestion(responseJson[0].data);
-            setAnswers((prevAnswers) => ({
-              ...prevAnswers,
-              ...Object.fromEntries(
-                responseJson[0].data.map((q: Question) => [q.queID, ""]),
-              ),
-            }));
+            const newAnswers = Object.fromEntries(
+              responseJson[0].data.map((q: Question) => [q.queID, ""]),
+            );
+            assessmentProgress.setAnswers({
+              ...answers,
+              ...newAnswers,
+            });
 
             const firstQuestio = responseJson[0].data.find(
               (q: Question) => q.moduleID === 11 && q.queFile,
@@ -1583,7 +1617,7 @@ ${transcription.text}`,
 
             setIsloading(false);
             setIsPreModalOpen(false);
-            setTimeRemaining(1200);
+            assessmentProgress.setTimeRemaining(1200);
           } else {
             setIsloading(false);
             setIsPreModalOpen(false);
@@ -1604,9 +1638,7 @@ ${transcription.text}`,
     event: React.ChangeEvent<HTMLTextAreaElement>,
     questionId: number,
   ) => {
-    const updatedAnswers = { ...answers };
-    updatedAnswers[questionId] = event.target.value;
-    setAnswers(updatedAnswers);
+    assessmentProgress.updateAnswer(questionId, event.target.value);
 
     const answer: Answer = {
       answerIsCorrect: "Pending",
@@ -1616,24 +1648,14 @@ ${transcription.text}`,
       answerCorrectAnswer: "na",
     };
 
-    setArrAnswers((prevArrAnswers) => {
-      const existingAnswerIndex = prevArrAnswers.findIndex(
-        (ans) => ans.queID === questionId,
-      );
-      if (existingAnswerIndex !== -1) {
-        const updatedArrAnswers = [...prevArrAnswers];
-        updatedArrAnswers[existingAnswerIndex] = answer;
-        return updatedArrAnswers;
-      }
-      return [...prevArrAnswers, answer];
-    });
+    assessmentProgress.addAnswer(answer);
   };
 
   const handleQuestionClick = (index: number) => {
     if (currentSection === "general") {
       return;
     }
-    setCurrentQuestionIndex(index);
+    assessmentProgress.setCurrentQuestionIndex(index);
   };
 
   if (isloading) {
@@ -1922,7 +1944,7 @@ ${transcription.text}`,
                   real-time feedback, grammar analysis, and detailed scoring.
                 </p>
                 <button
-                  onClick={() => navigate("/AssessmentWritingModule")}
+                  onClick={() => navigate("/assessment/writing")}
                   className="w-full md:w-auto px-4 md:px-6 py-2 md:py-3 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors text-sm md:text-base"
                 >
                   Start AI Writing Assessment
@@ -1949,7 +1971,7 @@ ${transcription.text}`,
                   scoring.
                 </p>
                 <button
-                  onClick={() => navigate("/AssessmentSpeakingModule")}
+                  onClick={() => navigate("/assessment/speaking")}
                   className="w-full md:w-auto px-4 md:px-6 py-2 md:py-3 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors text-sm md:text-base"
                 >
                   Start AI Speaking Assessment
@@ -2023,40 +2045,7 @@ ${transcription.text}`,
 
 export default NewAssessment;
 
-// Types
-interface Question {
-  queID: number;
-  moduleID?: number;
-  queQuestion?: string;
-  question?: string;
-  queType?: string;
-  queCorrectAns?: string;
-  queSolution?: string;
-  queVerificationRequred?: string;
-  queFile?: string;
-  lessionID?: string;
-  correctoption?: string;
-  questiontype?: string;
-  option1?: string;
-  option2?: string;
-  option3?: string;
-  option4?: string;
-  queOption1?: string;
-  queOption2?: string;
-  queOption3?: string;
-  queOption4?: string;
-  queOptions?: Array<{ optionID: string; optionText: string }>;
-}
-
-interface Answer {
-  answerIsCorrect: string;
-  answerIsVerified: string;
-  queID: number;
-  answerAnswer: string;
-  answerCorrectAnswer: string;
-  score?: number;
-}
-
+// Types (local to this component)
 interface ModuleScores {
   general: number;
   reading: number;
@@ -2073,5 +2062,3 @@ interface CalculatedScores {
   assessment_businessEtiquette_generalScore?: number;
   assessment_communicationSkills_generalScore?: number;
 }
-
-type SectionType = "general" | "reading" | "listening" | "writing" | "speaking";
