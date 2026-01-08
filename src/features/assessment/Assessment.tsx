@@ -31,7 +31,7 @@ const NewAssessment = () => {
     localStorage.getItem("USER_ID") ||
     "";
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
-    null
+    null,
   );
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,7 +40,7 @@ const NewAssessment = () => {
   const [isloading, setIsloading] = useState(false);
   const [isQuestionAvailable, setIsQuestionAvailable] = useState(false);
   const [arrGeneralQuestions, setArrGeneralQuestions] = useState<Question[]>(
-    []
+    [],
   );
   const [firstQuestionWithAudio, setfirstQuestionWithAudio] = useState("");
   const [firstQuestionWithAudioID, setfirstQuestionWithAudioID] =
@@ -127,11 +127,11 @@ const NewAssessment = () => {
     document.documentElement.style.setProperty("--primary-color", primaryColor);
     document.documentElement.style.setProperty(
       "--secondary-color",
-      secondaryColor
+      secondaryColor,
     );
     document.documentElement.style.setProperty(
       "--background-color",
-      backgroundColor
+      backgroundColor,
     );
     document.documentElement.style.setProperty("--accent-color", accentColor);
 
@@ -169,7 +169,7 @@ const NewAssessment = () => {
         };
         localStorage.setItem(
           "ASSESSMENT_FINAL_SCORES",
-          JSON.stringify(currentScores)
+          JSON.stringify(currentScores),
         );
         // console.log("Stored scores before writing module:", currentScores);
         navigate("/AssessmentWritingModule");
@@ -184,7 +184,7 @@ const NewAssessment = () => {
         };
         localStorage.setItem(
           "ASSESSMENT_FINAL_SCORES",
-          JSON.stringify(currentScores)
+          JSON.stringify(currentScores),
         );
         // console.log("Stored scores before speaking module:", currentScores);
         navigate("/AssessmentSpeakingModule");
@@ -207,18 +207,18 @@ const NewAssessment = () => {
         await calculateModuleScore(
           "general",
           arrGeneralQuestions,
-          arrGeneralAnswers
+          arrGeneralAnswers,
         );
         // console.log("General module completed. Moving to reading module.");
         setCurrentSection("reading");
         setCurrentQuestionIndex(0);
       } else if (currentSection === "reading") {
         const readingQuestions = arrAssesmentQuestion.filter(
-          (q: Question) => q.moduleID === 8
+          (q: Question) => q.moduleID === 8,
         );
         const readingAnswers = arrAnswers.filter((ans) => {
           const question = arrAssesmentQuestion.find(
-            (q: Question) => q.queID === ans.queID
+            (q: Question) => q.queID === ans.queID,
           );
           return question && question.moduleID === 8;
         });
@@ -228,18 +228,18 @@ const NewAssessment = () => {
         setCurrentQuestionIndex(0);
       } else if (currentSection === "listening") {
         const listeningQuestions = arrAssesmentQuestion.filter(
-          (q: Question) => q.moduleID === 11
+          (q: Question) => q.moduleID === 11,
         );
         const listeningAnswers = arrAnswers.filter((ans) => {
           const question = arrAssesmentQuestion.find(
-            (q: Question) => q.queID === ans.queID
+            (q: Question) => q.queID === ans.queID,
           );
           return question && question.moduleID === 11;
         });
         await calculateModuleScore(
           "listening",
           listeningQuestions,
-          listeningAnswers
+          listeningAnswers,
         );
         // console.log("Listening module completed. Moving to writing module.");
         setCurrentSection("writing");
@@ -274,7 +274,7 @@ const NewAssessment = () => {
   const calculateModuleScore = async (
     moduleType: "general" | "reading" | "listening",
     questions: Question[],
-    answers: Answer[]
+    answers: Answer[],
   ): Promise<number> => {
     try {
       setIsCalculatingScore(true);
@@ -327,7 +327,7 @@ const NewAssessment = () => {
             {
               ...question,
               queType: moduleType === "general" ? "MCQ" : question.queType,
-            }
+            },
           );
 
           if (isCorrect) {
@@ -370,13 +370,13 @@ const NewAssessment = () => {
         const decisionMakingScore =
           decisionMakingTotal > 0
             ? Math.round(
-                (decisionMakingCorrect / decisionMakingTotal) * 10 * 10
+                (decisionMakingCorrect / decisionMakingTotal) * 10 * 10,
               ) / 10
             : 0;
         const businessEtiquetteScore =
           businessEtiquetteTotal > 0
             ? Math.round(
-                (businessEtiquetteCorrect / businessEtiquetteTotal) * 10 * 10
+                (businessEtiquetteCorrect / businessEtiquetteTotal) * 10 * 10,
               ) / 10
             : 0;
         const communicationSkillsScore =
@@ -384,7 +384,7 @@ const NewAssessment = () => {
             ? Math.round(
                 (communicationSkillsCorrect / communicationSkillsTotal) *
                   10 *
-                  10
+                  10,
               ) / 10
             : 0;
 
@@ -399,11 +399,11 @@ const NewAssessment = () => {
 
       localStorage.setItem(
         `ASSESSMENT_${moduleType.toUpperCase()}_SCORE`,
-        finalScore.toString()
+        finalScore.toString(),
       );
 
       const existingScores = JSON.parse(
-        localStorage.getItem("ASSESSMENT_FINAL_SCORES") || "{}"
+        localStorage.getItem("ASSESSMENT_FINAL_SCORES") || "{}",
       ) as Partial<CalculatedScores>;
 
       const allScores: CalculatedScores = {
@@ -457,7 +457,7 @@ const NewAssessment = () => {
 
       localStorage.setItem(
         "ASSESSMENT_FINAL_SCORES",
-        JSON.stringify(allScores)
+        JSON.stringify(allScores),
       );
       setCalculatedScores(allScores);
 
@@ -474,7 +474,7 @@ const NewAssessment = () => {
     userAnswer: string,
     queCorrectAns: string,
     queSolution: string,
-    question: Question
+    question: Question,
   ): boolean => {
     if (!userAnswer) return false;
 
@@ -492,7 +492,7 @@ const NewAssessment = () => {
 
       if (question?.queOptions) {
         const correctOption = question.queOptions.find(
-          (option) => option.optionID === queCorrectAns
+          (option) => option.optionID === queCorrectAns,
         );
 
         if (correctOption && userAnswer === correctOption.optionText) {
@@ -600,7 +600,7 @@ const NewAssessment = () => {
       const writingText = writingAnswers
         .map(
           (ans) =>
-            `Question ${ans.questionId}:\n${ans.questionText}\n\nAnswer:\n${ans.answer}\n\n---\n\n`
+            `Question ${ans.questionId}:\n${ans.questionText}\n\nAnswer:\n${ans.answer}\n\n---\n\n`,
         )
         .join("");
 
@@ -646,7 +646,7 @@ ${writingText}`,
       const generalText = generalAnswers
         .map(
           (ans) =>
-            `Question ${ans.questionId}:\n${ans.questionText}\n\nAnswer:\n${ans.answer}\n\n---\n\n`
+            `Question ${ans.questionId}:\n${ans.questionText}\n\nAnswer:\n${ans.answer}\n\n---\n\n`,
         )
         .join("");
 
@@ -692,7 +692,7 @@ ${generalText}`,
       const readingText = readingAnswers
         .map(
           (ans) =>
-            `Question ${ans.questionId}:\n${ans.questionText}\n\nAnswer:\n${ans.answer}\n\n---\n\n`
+            `Question ${ans.questionId}:\n${ans.questionText}\n\nAnswer:\n${ans.answer}\n\n---\n\n`,
         )
         .join("");
 
@@ -738,7 +738,7 @@ ${readingText}`,
       const listeningText = listeningAnswers
         .map(
           (ans) =>
-            `Question ${ans.questionId}:\n${ans.questionText}\n\nAnswer:\n${ans.answer}\n\n---\n\n`
+            `Question ${ans.questionId}:\n${ans.questionText}\n\nAnswer:\n${ans.answer}\n\n---\n\n`,
         )
         .join("");
 
@@ -884,7 +884,7 @@ ${transcription.text}`,
         console.error("Error uploading assessment files:", error);
         toast.error(
           "Failed to upload assessment files: " +
-            (error instanceof Error ? error.message : "Unknown error")
+            (error instanceof Error ? error.message : "Unknown error"),
         );
         setIsloading(false);
       }
@@ -1007,7 +1007,7 @@ ${transcription.text}`,
             sample < 0
               ? Math.max(-0x8000, Math.floor(sample))
               : Math.min(0x7fff, Math.ceil(sample)),
-            true
+            true,
           );
         }
         index++;
@@ -1021,7 +1021,7 @@ ${transcription.text}`,
 
   const uploadAssessmentFiles = async (
     audioBlob: Blob,
-    textBlob: Blob
+    textBlob: Blob,
   ): Promise<{ audioUrl: string; textUrl: string; videoUrl: string }> => {
     try {
       const BASE_URL =
@@ -1043,17 +1043,17 @@ ${transcription.text}`,
       const timestamp = Date.now();
       const audioFile = new File(
         [audioBlob],
-        `assessment_audio_${userId}_${timestamp}.mp3`
+        `assessment_audio_${userId}_${timestamp}.mp3`,
       );
       const textFile = new File(
         [textBlob],
-        `assessment_writing_${userId}_${timestamp}.txt`
+        `assessment_writing_${userId}_${timestamp}.txt`,
       );
 
       const emptyVideoBlob = new Blob([], { type: "video/mp4" });
       const videoFile = new File(
         [emptyVideoBlob],
-        `empty_video_${userId}_${timestamp}.mp4`
+        `empty_video_${userId}_${timestamp}.mp4`,
       );
 
       formData.append("audioFile", audioFile);
@@ -1133,19 +1133,19 @@ ${transcription.text}`,
         `writingText=${encodeURIComponent(assessmentData.writingText)}&` +
         `communiqateAiScore=${encodeURIComponent(0)}&` +
         `assessment_speakingScore=${encodeURIComponent(
-          assessmentData.assessment_speakingScore
+          assessmentData.assessment_speakingScore,
         )}&` +
         `assessment_writingScore=${encodeURIComponent(
-          assessmentData.assessment_writingScore
+          assessmentData.assessment_writingScore,
         )}&` +
         `assessment_readingScore=${encodeURIComponent(
-          assessmentData.assessment_readingScore
+          assessmentData.assessment_readingScore,
         )}&` +
         `assessment_listeningScore=${encodeURIComponent(
-          assessmentData.assessment_listeningScore
+          assessmentData.assessment_listeningScore,
         )}&` +
         `assessment_generalScore=${encodeURIComponent(
-          assessmentData.assessment_generalScore
+          assessmentData.assessment_generalScore,
         )}`;
 
       const response = await fetch(webAppUrl, {
@@ -1181,7 +1181,7 @@ ${transcription.text}`,
       "json",
       JSON.stringify([
         { loginuserID: userId, apiType: "Android", apiVersion: "1.0" },
-      ])
+      ]),
     );
 
     const apiUrl =
@@ -1296,28 +1296,28 @@ ${transcription.text}`,
           loginUserID: userId,
           lessionID: lessionId,
           assessment_speakingScore: Math.round(
-            scores.assessment_speakingScore || 0
+            scores.assessment_speakingScore || 0,
           ),
           assessment_writingScore: Math.round(
-            scores.assessment_writingScore || 0
+            scores.assessment_writingScore || 0,
           ),
           assessment_listeningScore: Math.round(
-            scores.assessment_listeningScore || 0
+            scores.assessment_listeningScore || 0,
           ),
           assessment_readingScore: Math.round(
-            scores.assessment_readingScore || 0
+            scores.assessment_readingScore || 0,
           ),
           assessment_generalScore: Math.round(
-            scores.assessment_generalScore || 0
+            scores.assessment_generalScore || 0,
           ),
           assessment_businessEtiquette_generalScore: Math.round(
-            scores.assessment_businessEtiquette_generalScore || 0
+            scores.assessment_businessEtiquette_generalScore || 0,
           ),
           assessment_communicationSkills_generalScore: Math.round(
-            scores.assessment_communicationSkills_generalScore || 0
+            scores.assessment_communicationSkills_generalScore || 0,
           ),
           assessment_decisionMaking_generalScore: Math.round(
-            scores.assessment_decisionMaking_generalScore || 0
+            scores.assessment_decisionMaking_generalScore || 0,
           ),
         },
       ]);
@@ -1399,7 +1399,7 @@ ${transcription.text}`,
       currentQue = arrGeneralQuestions.find((que) => que.queID === questionId);
     } else {
       currentQue = arrAssesmentQuestion.find(
-        (que: Question) => que.queID === questionId
+        (que: Question) => que.queID === questionId,
       );
     }
 
@@ -1506,7 +1506,7 @@ ${transcription.text}`,
             setAnswers((prevAnswers) => ({
               ...prevAnswers,
               ...Object.fromEntries(
-                responseJson[0].data.map((q: Question) => [q.queID, ""])
+                responseJson[0].data.map((q: Question) => [q.queID, ""]),
               ),
             }));
           }
@@ -1556,18 +1556,18 @@ ${transcription.text}`,
             setAnswers((prevAnswers) => ({
               ...prevAnswers,
               ...Object.fromEntries(
-                responseJson[0].data.map((q: Question) => [q.queID, ""])
+                responseJson[0].data.map((q: Question) => [q.queID, ""]),
               ),
             }));
 
             const firstQuestio = responseJson[0].data.find(
-              (q: Question) => q.moduleID === 11 && q.queFile
+              (q: Question) => q.moduleID === 11 && q.queFile,
             );
             const firstQuestioPDF = responseJson[0].data.find(
-              (q: Question) => q.moduleID === 8 && q.queFile
+              (q: Question) => q.moduleID === 8 && q.queFile,
             );
             const lessId = responseJson[0].data.find(
-              (q: Question) => q.lessionID
+              (q: Question) => q.lessionID,
             );
 
             if (firstQuestio) {
@@ -1602,7 +1602,7 @@ ${transcription.text}`,
 
   const handleAnswerChange = (
     event: React.ChangeEvent<HTMLTextAreaElement>,
-    questionId: number
+    questionId: number,
   ) => {
     const updatedAnswers = { ...answers };
     updatedAnswers[questionId] = event.target.value;
@@ -1618,7 +1618,7 @@ ${transcription.text}`,
 
     setArrAnswers((prevArrAnswers) => {
       const existingAnswerIndex = prevArrAnswers.findIndex(
-        (ans) => ans.queID === questionId
+        (ans) => ans.queID === questionId,
       );
       if (existingAnswerIndex !== -1) {
         const updatedArrAnswers = [...prevArrAnswers];
@@ -1675,10 +1675,10 @@ ${transcription.text}`,
                                     ? "bg-primary text-white"
                                     : "bg-gray-200 hover:bg-gray-300"
                                 } ${
-                sections[section].length === 0
-                  ? "opacity-50 cursor-not-allowed"
-                  : ""
-              }`}
+                                  sections[section].length === 0
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : ""
+                                }`}
             >
               <span className="hidden md:inline">
                 {section.charAt(0).toUpperCase() + section.slice(1)}
@@ -1858,7 +1858,7 @@ ${transcription.text}`,
                                     ([key, value]) =>
                                       key.startsWith("queOption") &&
                                       typeof value === "string" &&
-                                      value
+                                      value,
                                   )
                                   .map(([, value], index) => (
                                     <div

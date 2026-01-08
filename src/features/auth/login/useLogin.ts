@@ -24,7 +24,7 @@ export const useLogin = (onAuthChange: () => void) => {
       // --- Save User Data ---
       localStorage.setItem('TOKEN_ID', user.userSecurityToken);
       localStorage.setItem('USER_ID', user.userID);
-      // localStorage.setItem('corporateUserId', user.corporateUserId);
+      localStorage.setItem('corporateUserId', user.corporateUserId);
       localStorage.setItem('USER_NAME', `${user.userFirstName} ${user.userLastName}`);
       localStorage.setItem('USER_DATA', JSON.stringify(user));
 

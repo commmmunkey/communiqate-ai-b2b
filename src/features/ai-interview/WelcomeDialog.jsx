@@ -19,14 +19,14 @@ const WelcomeDialog = ({ onContinue, onClose, open = true }) => {
     <Dialog open={open} onOpenChange={handleOpenChange} >
       <DialogContent className="sm:max-w-lg" onInteractOutside={e=>e.preventDefault()} onEscapeKeyDown={e=>e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle className="text-center">
+          <DialogTitle className="text-center text-2xl">
             Welcome to Communiqate AI's
           </DialogTitle>
-          <DialogTitle className="text-lg text-center">
+          <DialogTitle className="text-center text-2xl">
             Business Readiness Assessment Portal
           </DialogTitle>
         </DialogHeader>
-        <DialogDescription className="text-center space-y-4">
+        <DialogDescription className="text-center space-y-4 text-base">
           <p>
             We're excited to have you on board! Before you begin, please take a moment to complete
             your basic details below. This will help us get to know you better and ensure an accurate

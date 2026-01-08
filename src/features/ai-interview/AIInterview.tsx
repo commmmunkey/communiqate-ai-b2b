@@ -12,13 +12,13 @@ import OpenAI from "openai";
 import { environment } from "./environment";
 import WelcomeDialog from "./WelcomeDialog";
 // import MobileNavbar from '../components/MobileNavbar';
-// import { useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import apiClient from "@/lib/axios";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 const SpeechToText = () => {
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
   // State management
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -2252,7 +2252,7 @@ const SpeechToText = () => {
   // Handle dialog closing
   const handleDialogClose = () => {
     setShowWelcomeDialog(false);
-    // navigate("/"); // Navigate to home
+    navigate("/"); // Navigate to home
   };
 
   // Handle continue from welcome dialog
