@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from "react-router";
 import { lazy, Suspense, useState, useEffect } from "react";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import ErrorBoundary from "./layouts/ErrorBoundary";
 import PublicGuard from "./layouts/PublicGuard";
 import Loading from "./components/Loading";
@@ -107,6 +109,18 @@ function App() {
           />
         </Routes>
       </Suspense>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </ErrorBoundary>
   );
 }
