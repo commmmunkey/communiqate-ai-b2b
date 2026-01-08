@@ -2,9 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { useStore } from "@/store";
 import openAIEvaluationService from "./OpenAIEvaluationService";
-import evaluationAPIService from "./EvaluationAPIService";
 import EvaluationLoading from "./components/EvaluationLoading";
 import { environment } from "./environment";
+
+interface EvaluationLoadingState {
+  isVisible: boolean;
+  message: string;
+  progress: number;
+  estimatedTime: number;
+}
 
 interface Question {
   id: number;
@@ -437,16 +443,31 @@ const AssessmentSpeakingModule = () => {
 
       // Simulate progress updates
       const progressInterval = setInterval(() => {
-        setEvaluationLoading((prev) => ({
+        setEvaluationLoading((prev: EvaluationLoadingState) => ({
           ...prev,
           progress: Math.min(prev.progress + 8, 90),
         }));
       }, 2000);
 
       // Transcribe audio
-      const transcribedText =
-        await openAIEvaluationService.transcribeAudio(audioBlob);
-      setTranscription(transcribedText);
+      let transcribedText = "";
+      try {
+        transcribedText =
+          await openAIEvaluationService.transcribeAudio(audioBlob);
+
+        if (!transcribedText || transcribedText.trim() === "") {
+          throw new Error("Transcription is empty");
+        }
+
+        setTranscription(transcribedText);
+      } catch (error) {
+        console.error("Error transcribing audio:", error);
+        throw new Error(
+          `Failed to transcribe audio: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
+        );
+      }
 
       // Update loading message
       setEvaluationLoading({
@@ -456,10 +477,31 @@ const AssessmentSpeakingModule = () => {
       });
 
       // Perform AI evaluation
-      const evaluation = await openAIEvaluationService.evaluateSpeaking(
-        currentQuestion.prompt,
-        transcribedText,
-      );
+      let evaluation: {
+        scores: { overall: number; [key: string]: number };
+        feedback: { detailed: string };
+        rawEvaluation: string;
+      } | null = null;
+      try {
+        const evalResult = await openAIEvaluationService.evaluateSpeaking(
+          currentQuestion.prompt,
+          transcribedText,
+        );
+
+        // Validate evaluation result
+        if (!evalResult || !evalResult.scores || !evalResult.feedback) {
+          throw new Error("Invalid evaluation result received");
+        }
+
+        evaluation = evalResult;
+      } catch (error) {
+        console.error("Error evaluating speaking:", error);
+        throw new Error(
+          `Failed to evaluate speaking: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
+        );
+      }
 
       // Clear progress interval
       clearInterval(progressInterval);
@@ -524,47 +566,6 @@ const AssessmentSpeakingModule = () => {
       } catch (error) {
         console.error("Error uploading speaking audio to server:", error);
       }
-
-      // Submit to assessment API
-      await evaluationAPIService.submitAssessmentSpeakingEvaluation({
-        userId: parseInt(userId) || 0,
-        assessmentId: assessmentId,
-        questionId: currentQuestion.id,
-        moduleId: 13,
-        prompt: currentQuestion.prompt,
-        audioUrl: audioUrl,
-        transcription: transcribedText,
-        score: evaluation.scores.overall,
-        feedback: evaluation.feedback.detailed,
-        evaluationDetails: evaluation,
-      });
-
-      // Submit to assessment faculty evaluation API
-      const facultyData = {
-        userId: parseInt(userId) || 0,
-        assessmentId: assessmentId,
-        questionId: currentQuestion.id,
-        moduleId: 13,
-        prompt: currentQuestion.prompt,
-        audioUrl: audioUrl,
-        transcription: transcribedText,
-        score: evaluation.scores.overall,
-        feedback: evaluation.feedback.detailed,
-        evaluationDetails: evaluation,
-        overall: evaluation.scores.overall,
-      };
-      await evaluationAPIService.submitAssessmentFacultySpeakingEvaluation(
-        facultyData,
-      );
-
-      // Update assessment progress
-      await evaluationAPIService.updateAssessmentProgress({
-        userId: parseInt(userId) || 0,
-        assessmentId: assessmentId,
-        moduleId: 13,
-        moduleType: "speaking",
-        score: evaluation.scores.overall,
-      });
 
       // Hide loading and show completion
       setEvaluationLoading({
@@ -765,7 +766,7 @@ const AssessmentSpeakingModule = () => {
                 </div>
 
                 {/* Calculated Scores Display */}
-                {calculatedScores && (
+                {/* {calculatedScores && (
                   <div className="border-t pt-4">
                     <h3 className="text-sm font-medium text-gray-700 mb-2">
                       Previous Module Scores:
@@ -795,7 +796,6 @@ const AssessmentSpeakingModule = () => {
                       </div>
                     </div>
 
-                    {/* Category-specific General Scores */}
                     {calculatedScores.assessment_generalScore &&
                       calculatedScores.assessment_generalScore > 0 && (
                         <div className="mt-3 pt-3 border-t">
@@ -837,7 +837,7 @@ const AssessmentSpeakingModule = () => {
                         </div>
                       )}
                   </div>
-                )}
+                )} */}
               </div>
             </div>
           </div>

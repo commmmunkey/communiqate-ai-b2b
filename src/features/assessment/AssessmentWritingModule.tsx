@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { useStore } from "@/store";
 import openAIEvaluationService from "./OpenAIEvaluationService";
-import evaluationAPIService from "./EvaluationAPIService";
 import EvaluationLoading from "./components/EvaluationLoading";
 
 interface Question {
@@ -307,10 +306,33 @@ const AssessmentWritingModule = () => {
       }, 2000);
 
       // Perform AI evaluation
-      const evaluation = await openAIEvaluationService.evaluateWriting(
-        currentQuestion.prompt,
-        userResponse,
-      );
+      let evaluation;
+      try {
+        // Validate inputs before making API call
+        if (!userResponse || userResponse.trim() === "") {
+          throw new Error("Writing response cannot be empty");
+        }
+        if (!currentQuestion.prompt || currentQuestion.prompt.trim() === "") {
+          throw new Error("Writing prompt cannot be empty");
+        }
+
+        evaluation = await openAIEvaluationService.evaluateWriting(
+          currentQuestion.prompt,
+          userResponse,
+        );
+        
+        // Validate evaluation result
+        if (!evaluation || !evaluation.scores || !evaluation.feedback) {
+          throw new Error("Invalid evaluation result received");
+        }
+      } catch (error) {
+        console.error("Error evaluating writing:", error);
+        throw new Error(
+          `Failed to evaluate writing: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
+      }
 
       // Clear progress interval
       clearInterval(progressInterval);
@@ -348,45 +370,6 @@ const AssessmentWritingModule = () => {
       // Store the actual writing text content for AI interview upload
       localStorage.setItem("ASSESSMENT_WRITING_TEXT_CONTENT", userResponse);
       // console.log("Writing text content stored for AI interview:", userResponse);
-
-      // Submit to assessment API
-      await evaluationAPIService.submitAssessmentWritingEvaluation({
-        userId: parseInt(userId) || 0,
-        assessmentId: assessmentId,
-        questionId: currentQuestion.id,
-        moduleId: 9,
-        prompt: currentQuestion.prompt,
-        response: userResponse,
-        score: evaluation.scores.overall,
-        feedback: evaluation.feedback.detailed,
-        evaluationDetails: evaluation,
-      });
-
-      // Submit to assessment faculty evaluation API
-      const facultyData = {
-        userId: parseInt(userId) || 0,
-        assessmentId: assessmentId,
-        questionId: currentQuestion.id,
-        moduleId: 9,
-        prompt: currentQuestion.prompt,
-        response: userResponse,
-        score: evaluation.scores.overall,
-        feedback: evaluation.feedback.detailed,
-        evaluationDetails: evaluation,
-        overall: evaluation.scores.overall,
-      };
-      await evaluationAPIService.submitAssessmentFacultyWritingEvaluation(
-        facultyData,
-      );
-
-      // Update assessment progress
-      await evaluationAPIService.updateAssessmentProgress({
-        userId: parseInt(userId) || 0,
-        assessmentId: assessmentId,
-        moduleId: 9,
-        moduleType: "writing",
-        score: evaluation.scores.overall,
-      });
 
       // Hide loading and show completion
       setEvaluationLoading({
@@ -573,7 +556,7 @@ const AssessmentWritingModule = () => {
                 </div>
 
                 {/* Calculated Scores Display */}
-                {calculatedScores && (
+                {/* {calculatedScores && (
                   <div className="border-t pt-4">
                     <h3 className="text-sm font-medium text-gray-700 mb-2">
                       Previous Module Scores:
@@ -603,7 +586,6 @@ const AssessmentWritingModule = () => {
                       </div>
                     </div>
 
-                    {/* Category-specific General Scores */}
                     {calculatedScores.assessment_generalScore &&
                       calculatedScores.assessment_generalScore > 0 && (
                         <div className="mt-3 pt-3 border-t">
@@ -645,7 +627,7 @@ const AssessmentWritingModule = () => {
                         </div>
                       )}
                   </div>
-                )}
+                )} */}
               </div>
             </div>
           </div>

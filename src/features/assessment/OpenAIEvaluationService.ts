@@ -26,8 +26,13 @@ class OpenAIEvaluationService {
   private speakingPrompt: string;
 
   constructor() {
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    if (!apiKey || apiKey.trim() === "") {
+      throw new Error("OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY environment variable.");
+    }
+    
     this.client = new OpenAI({
-      apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+      apiKey: apiKey,
       dangerouslyAllowBrowser: true,
     });
 
@@ -82,6 +87,14 @@ TRANSCRIPTION: {transcription}`;
     response: string
   ): Promise<EvaluationResult> {
     try {
+      // Validate inputs
+      if (!prompt || prompt.trim() === "") {
+        throw new Error("Writing prompt cannot be empty");
+      }
+      if (!response || response.trim() === "") {
+        throw new Error("Writing response cannot be empty");
+      }
+
       const evaluationPrompt = this.writingPrompt
         .replace("{prompt}", prompt)
         .replace("{response}", response);
@@ -98,7 +111,12 @@ TRANSCRIPTION: {transcription}`;
         temperature: 0.7,
       });
 
-      const evaluationText = completion.choices[0].message.content || "";
+      const evaluationText = completion.choices[0]?.message?.content || "";
+      
+      if (!evaluationText || evaluationText.trim() === "") {
+        throw new Error("Empty response received from OpenAI");
+      }
+      
       return this.extractWritingScores(evaluationText);
     } catch (error) {
       console.error("Error evaluating writing:", error);
@@ -115,6 +133,14 @@ TRANSCRIPTION: {transcription}`;
     transcription: string
   ): Promise<EvaluationResult> {
     try {
+      // Validate inputs
+      if (!prompt || prompt.trim() === "") {
+        throw new Error("Speaking prompt cannot be empty");
+      }
+      if (!transcription || transcription.trim() === "") {
+        throw new Error("Transcription cannot be empty");
+      }
+
       const evaluationPrompt = this.speakingPrompt
         .replace("{prompt}", prompt)
         .replace("{transcription}", transcription);
@@ -131,7 +157,12 @@ TRANSCRIPTION: {transcription}`;
         temperature: 0.7,
       });
 
-      const evaluationText = completion.choices[0].message.content || "";
+      const evaluationText = completion.choices[0]?.message?.content || "";
+      
+      if (!evaluationText || evaluationText.trim() === "") {
+        throw new Error("Empty response received from OpenAI");
+      }
+      
       return this.extractSpeakingScores(evaluationText);
     } catch (error) {
       console.error("Error evaluating speaking:", error);
@@ -145,6 +176,11 @@ TRANSCRIPTION: {transcription}`;
 
   async transcribeAudio(audioBlob: Blob): Promise<string> {
     try {
+      // Validate audio blob
+      if (!audioBlob || audioBlob.size === 0) {
+        throw new Error("Audio blob is empty or invalid");
+      }
+
       const audioFile = new File([audioBlob], "audio.webm", {
         type: "audio/webm",
       });
@@ -153,6 +189,10 @@ TRANSCRIPTION: {transcription}`;
         file: audioFile,
         model: "whisper-1",
       });
+
+      if (!transcription?.text || transcription.text.trim() === "") {
+        throw new Error("Empty transcription received from OpenAI");
+      }
 
       return transcription.text;
     } catch (error) {
@@ -192,6 +232,29 @@ TRANSCRIPTION: {transcription}`;
       scores.tone = toneMatch ? parseFloat(toneMatch[1]) : 0;
       scores.content = contentMatch ? parseFloat(contentMatch[1]) : 0;
       scores.overall = overallMatch ? parseFloat(overallMatch[1]) : 0;
+
+      // Validate scores are within expected range
+      const validateScore = (score: number, name: string): number => {
+        if (Number.isNaN(score) || score < 0 || score > 10) {
+          console.warn(`Invalid ${name} score: ${score}, defaulting to 0`);
+          return 0;
+        }
+        return score;
+      };
+
+      scores.clarity = validateScore(scores.clarity, "clarity");
+      scores.grammar = validateScore(scores.grammar, "grammar");
+      scores.tone = validateScore(scores.tone, "tone");
+      scores.content = validateScore(scores.content, "content");
+      scores.overall = validateScore(scores.overall, "overall");
+
+      // If overall is 0 but individual scores exist, calculate average
+      if (scores.overall === 0 && (scores.clarity > 0 || scores.grammar > 0 || scores.tone > 0 || scores.content > 0)) {
+        const validScores = [scores.clarity, scores.grammar, scores.tone, scores.content].filter(s => s > 0);
+        if (validScores.length > 0) {
+          scores.overall = Math.round((validScores.reduce((a, b) => a + b, 0) / validScores.length) * 10) / 10;
+        }
+      }
 
       // Extract feedback section
       const feedbackMatch = evaluationText.match(
@@ -245,6 +308,29 @@ TRANSCRIPTION: {transcription}`;
       scores.grammar = grammarMatch ? parseFloat(grammarMatch[1]) : 0;
       scores.content = contentMatch ? parseFloat(contentMatch[1]) : 0;
       scores.overall = overallMatch ? parseFloat(overallMatch[1]) : 0;
+
+      // Validate scores are within expected range
+      const validateScore = (score: number, name: string): number => {
+        if (Number.isNaN(score) || score < 0 || score > 10) {
+          console.warn(`Invalid ${name} score: ${score}, defaulting to 0`);
+          return 0;
+        }
+        return score;
+      };
+
+      scores.pronunciation = validateScore(scores.pronunciation, "pronunciation");
+      scores.fluency = validateScore(scores.fluency, "fluency");
+      scores.grammar = validateScore(scores.grammar, "grammar");
+      scores.content = validateScore(scores.content, "content");
+      scores.overall = validateScore(scores.overall, "overall");
+
+      // If overall is 0 but individual scores exist, calculate average
+      if (scores.overall === 0 && (scores.pronunciation > 0 || scores.fluency > 0 || scores.grammar > 0 || scores.content > 0)) {
+        const validScores = [scores.pronunciation, scores.fluency, scores.grammar, scores.content].filter(s => s > 0);
+        if (validScores.length > 0) {
+          scores.overall = Math.round((validScores.reduce((a, b) => a + b, 0) / validScores.length) * 10) / 10;
+        }
+      }
 
       // Extract feedback section
       const feedbackMatch = evaluationText.match(

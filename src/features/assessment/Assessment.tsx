@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { OpenAI } from "openai";
@@ -75,6 +75,12 @@ const NewAssessment = () => {
 
   const userId = localStorage.getItem("USER_ID") || "";
 
+  // Ref to store timer ID for proper cleanup
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Ref to store score cache for memoization
+  const scoreCacheRef = useRef<Map<string, number>>(new Map());
+
   // Group questions by section
   const sections = {
     general: arrGeneralQuestions || [],
@@ -106,18 +112,32 @@ const NewAssessment = () => {
   };
 
   useEffect(() => {
-    const timer = setInterval(() => {
+    // Clear any existing timer before creating a new one (defensive programming)
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    timerRef.current = setInterval(() => {
       assessmentProgress.setTimeRemaining((prevTime) => {
         if (prevTime <= 0) {
-          clearInterval(timer);
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
           return 0;
         }
         return prevTime - 1;
       });
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, []);
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [assessmentProgress.setTimeRemaining]);
 
   useEffect(() => {
     // Set theme colors
@@ -230,6 +250,11 @@ const NewAssessment = () => {
   };
 
   const handleNext = async () => {
+    // Prevent multiple clicks during score calculation
+    if (isCalculatingScore) {
+      return;
+    }
+
     const currentSectionQuestions = sections[currentSection];
     if (currentQuestionIndex < currentSectionQuestions.length - 1) {
       assessmentProgress.setCurrentQuestionIndex(currentQuestionIndex + 1);
@@ -306,300 +331,390 @@ const NewAssessment = () => {
     }
   };
 
-  const calculateModuleScore = async (
-    moduleType: "general" | "reading" | "listening",
-    questions: Question[],
-    answers: Answer[],
-  ): Promise<number> => {
-    try {
-      setIsCalculatingScore(true);
-      // console.log(`=== CALCULATING ${moduleType.toUpperCase()} MODULE SCORE ===`);
+  const checkAnswerCorrectness = useCallback(
+    (
+      userAnswer: string,
+      queCorrectAns: string,
+      queSolution: string,
+      question: Question,
+    ): boolean => {
+      if (!userAnswer) return false;
 
-      if (!questions || questions.length === 0) {
-        setModuleScores((prev) => ({ ...prev, [moduleType]: 0 }));
-        setIsCalculatingScore(false);
-        return 0;
-      }
-
-      if (!answers || answers.length === 0) {
-        setModuleScores((prev) => ({ ...prev, [moduleType]: 0 }));
-        setIsCalculatingScore(false);
-        return 0;
-      }
-
-      let correctAnswers = 0;
-      let totalQuestions = 0;
-
-      let decisionMakingCorrect = 0;
-      let decisionMakingTotal = 0;
-      let businessEtiquetteCorrect = 0;
-      let businessEtiquetteTotal = 0;
-      let communicationSkillsCorrect = 0;
-      let communicationSkillsTotal = 0;
-
-      questions.forEach((question) => {
-        const userAnswer = answers.find((ans) => ans.queID === question.queID);
-
-        if (
-          moduleType !== "general" &&
-          question.queVerificationRequred === "Yes"
-        ) {
-          return;
+      if (question?.queType === "MCQ") {
+        if (userAnswer === queCorrectAns) {
+          return true;
         }
 
-        const correctAnswer =
-          moduleType === "general"
-            ? question.correctoption
-            : question.queCorrectAns || question.queSolution;
+        if (queCorrectAns && queCorrectAns.startsWith("Option")) {
+          const optionNumber = queCorrectAns.replace("Option", "");
+          if (userAnswer === optionNumber) {
+            return true;
+          }
+        }
 
-        if (userAnswer && correctAnswer) {
-          totalQuestions++;
-
-          const isCorrect = checkAnswerCorrectness(
-            userAnswer.answerAnswer,
-            correctAnswer,
-            correctAnswer,
-            {
-              ...question,
-              queType: moduleType === "general" ? "MCQ" : question.queType,
-            },
+        if (question?.queOptions) {
+          const correctOption = question.queOptions.find(
+            (option) => option.optionID === queCorrectAns,
           );
 
-          if (isCorrect) {
-            correctAnswers++;
+          if (correctOption && userAnswer === correctOption.optionText) {
+            return true;
+          }
+        }
 
-            if (moduleType === "general" && question.questiontype) {
-              const questionType = question.questiontype.toLowerCase();
-              if (questionType.includes("decision")) {
-                decisionMakingCorrect++;
-                decisionMakingTotal++;
-              } else if (questionType.includes("etiquette")) {
-                businessEtiquetteCorrect++;
-                businessEtiquetteTotal++;
-              } else if (questionType.includes("communication")) {
-                communicationSkillsCorrect++;
-                communicationSkillsTotal++;
-              }
+        if (question?.correctoption && userAnswer === question.correctoption) {
+          return true;
+        }
+      }
+
+      if (question?.queType === "Single Text" && queSolution) {
+        if (userAnswer === queSolution) {
+          return true;
+        }
+
+        if (
+          userAnswer.toLowerCase().trim() === queSolution.toLowerCase().trim()
+        ) {
+          return true;
+        }
+
+        if (
+          queSolution === "1" ||
+          queSolution === "2" ||
+          queSolution === "3" ||
+          queSolution === "4"
+        ) {
+          if (userAnswer === queSolution) {
+            return true;
+          }
+        }
+      }
+
+      if (queSolution && question?.queType !== "MCQ") {
+        if (userAnswer === queSolution) {
+          return true;
+        }
+
+        if (
+          userAnswer.toLowerCase().trim() === queSolution.toLowerCase().trim()
+        ) {
+          return true;
+        }
+
+        if (
+          queSolution === "1" ||
+          queSolution === "2" ||
+          queSolution === "3" ||
+          queSolution === "4"
+        ) {
+          if (userAnswer === queSolution) {
+            return true;
+          }
+        }
+      }
+
+      if (queCorrectAns && question?.queType !== "MCQ") {
+        if (userAnswer === queCorrectAns) {
+          return true;
+        }
+
+        if (
+          userAnswer.toLowerCase().trim() === queCorrectAns.toLowerCase().trim()
+        ) {
+          return true;
+        }
+      }
+
+      return false;
+    },
+    [],
+  );
+
+  const calculateModuleScore = useCallback(
+    async (
+      moduleType: "general" | "reading" | "listening",
+      questions: Question[],
+      answers: Answer[],
+    ): Promise<number> => {
+      try {
+        // Create cache key based on moduleType, question IDs, and answer values
+        const questionIds = questions
+          .map((q) => q.queID)
+          .sort((a, b) => (a || 0) - (b || 0))
+          .join(",");
+        const answerKey = answers
+          .map((a) => `${a.queID}:${a.answerAnswer || ""}`)
+          .sort()
+          .join(",");
+        const cacheKey = `${moduleType}-${questionIds}-${answerKey}`;
+
+        // Check cache first
+        if (scoreCacheRef.current.has(cacheKey)) {
+          const cachedScore = scoreCacheRef.current.get(cacheKey);
+          if (cachedScore !== undefined) {
+            // Still update state and localStorage to maintain behavior
+            setModuleScores((prev) => ({ ...prev, [moduleType]: cachedScore }));
+            localStorage.setItem(
+              `ASSESSMENT_${moduleType.toUpperCase()}_SCORE`,
+              cachedScore.toString(),
+            );
+
+            const existingScores = JSON.parse(
+              localStorage.getItem("ASSESSMENT_FINAL_SCORES") || "{}",
+            ) as Partial<CalculatedScores>;
+
+            const allScores: CalculatedScores = {
+              assessment_generalScore:
+                moduleType === "general"
+                  ? cachedScore
+                  : existingScores.assessment_generalScore ||
+                    moduleScores.general ||
+                    0,
+              assessment_readingScore:
+                moduleType === "reading"
+                  ? cachedScore
+                  : existingScores.assessment_readingScore ||
+                    moduleScores.reading ||
+                    0,
+              assessment_listeningScore:
+                moduleType === "listening"
+                  ? cachedScore
+                  : existingScores.assessment_listeningScore ||
+                    moduleScores.listening ||
+                    0,
+              assessment_writingScore:
+                existingScores.assessment_writingScore || 0,
+              assessment_speakingScore:
+                existingScores.assessment_speakingScore || 0,
+              assessment_decisionMaking_generalScore:
+                existingScores.assessment_decisionMaking_generalScore || 0,
+              assessment_businessEtiquette_generalScore:
+                existingScores.assessment_businessEtiquette_generalScore || 0,
+              assessment_communicationSkills_generalScore:
+                existingScores.assessment_communicationSkills_generalScore || 0,
+            };
+
+            if (moduleType === "general") {
+              allScores.assessment_generalScore = cachedScore;
+            } else if (moduleType === "reading") {
+              allScores.assessment_readingScore = cachedScore;
+            } else if (moduleType === "listening") {
+              allScores.assessment_listeningScore = cachedScore;
             }
-          } else {
-            if (moduleType === "general" && question.questiontype) {
-              const questionType = question.questiontype.toLowerCase();
-              if (questionType.includes("decision")) {
-                decisionMakingTotal++;
-              } else if (questionType.includes("etiquette")) {
-                businessEtiquetteTotal++;
-              } else if (questionType.includes("communication")) {
-                communicationSkillsTotal++;
+
+            localStorage.setItem(
+              "ASSESSMENT_FINAL_SCORES",
+              JSON.stringify(allScores),
+            );
+            setCalculatedScores(allScores);
+
+            return cachedScore;
+          }
+        }
+
+        setIsCalculatingScore(true);
+        // console.log(`=== CALCULATING ${moduleType.toUpperCase()} MODULE SCORE ===`);
+
+        if (!questions || questions.length === 0) {
+          setModuleScores((prev) => ({ ...prev, [moduleType]: 0 }));
+          setIsCalculatingScore(false);
+          scoreCacheRef.current.set(cacheKey, 0);
+          return 0;
+        }
+
+        if (!answers || answers.length === 0) {
+          setModuleScores((prev) => ({ ...prev, [moduleType]: 0 }));
+          setIsCalculatingScore(false);
+          scoreCacheRef.current.set(cacheKey, 0);
+          return 0;
+        }
+
+        let correctAnswers = 0;
+        let totalQuestions = 0;
+
+        let decisionMakingCorrect = 0;
+        let decisionMakingTotal = 0;
+        let businessEtiquetteCorrect = 0;
+        let businessEtiquetteTotal = 0;
+        let communicationSkillsCorrect = 0;
+        let communicationSkillsTotal = 0;
+
+        questions.forEach((question) => {
+          const userAnswer = answers.find(
+            (ans) => ans.queID === question.queID,
+          );
+
+          if (
+            moduleType !== "general" &&
+            question.queVerificationRequred === "Yes"
+          ) {
+            return;
+          }
+
+          const correctAnswer =
+            moduleType === "general"
+              ? question.correctoption
+              : question.queCorrectAns || question.queSolution;
+
+          if (userAnswer && correctAnswer) {
+            totalQuestions++;
+
+            const isCorrect = checkAnswerCorrectness(
+              userAnswer.answerAnswer,
+              correctAnswer,
+              correctAnswer,
+              {
+                ...question,
+                queType: moduleType === "general" ? "MCQ" : question.queType,
+              },
+            );
+
+            if (isCorrect) {
+              correctAnswers++;
+
+              if (moduleType === "general" && question.questiontype) {
+                const questionType = question.questiontype.toLowerCase();
+                if (questionType.includes("decision")) {
+                  decisionMakingCorrect++;
+                  decisionMakingTotal++;
+                } else if (questionType.includes("etiquette")) {
+                  businessEtiquetteCorrect++;
+                  businessEtiquetteTotal++;
+                } else if (questionType.includes("communication")) {
+                  communicationSkillsCorrect++;
+                  communicationSkillsTotal++;
+                }
+              }
+            } else {
+              if (moduleType === "general" && question.questiontype) {
+                const questionType = question.questiontype.toLowerCase();
+                if (questionType.includes("decision")) {
+                  decisionMakingTotal++;
+                } else if (questionType.includes("etiquette")) {
+                  businessEtiquetteTotal++;
+                } else if (questionType.includes("communication")) {
+                  communicationSkillsTotal++;
+                }
               }
             }
           }
+        });
+
+        const percentage =
+          totalQuestions > 0 ? (correctAnswers / totalQuestions) * 10 : 0;
+        const finalScore = Math.round(percentage * 10) / 10;
+
+        let categoryScores: Record<string, number> = {};
+        if (moduleType === "general") {
+          const decisionMakingScore =
+            decisionMakingTotal > 0
+              ? Math.round(
+                  (decisionMakingCorrect / decisionMakingTotal) * 10 * 10,
+                ) / 10
+              : 0;
+          const businessEtiquetteScore =
+            businessEtiquetteTotal > 0
+              ? Math.round(
+                  (businessEtiquetteCorrect / businessEtiquetteTotal) * 10 * 10,
+                ) / 10
+              : 0;
+          const communicationSkillsScore =
+            communicationSkillsTotal > 0
+              ? Math.round(
+                  (communicationSkillsCorrect / communicationSkillsTotal) *
+                    10 *
+                    10,
+                ) / 10
+              : 0;
+
+          categoryScores = {
+            assessment_decisionMaking_generalScore: decisionMakingScore,
+            assessment_businessEtiquette_generalScore: businessEtiquetteScore,
+            assessment_communicationSkills_generalScore:
+              communicationSkillsScore,
+          };
         }
-      });
 
-      const percentage =
-        totalQuestions > 0 ? (correctAnswers / totalQuestions) * 10 : 0;
-      const finalScore = Math.round(percentage * 10) / 10;
+        // Store in cache before updating state
+        scoreCacheRef.current.set(cacheKey, finalScore);
 
-      let categoryScores: Record<string, number> = {};
-      if (moduleType === "general") {
-        const decisionMakingScore =
-          decisionMakingTotal > 0
-            ? Math.round(
-                (decisionMakingCorrect / decisionMakingTotal) * 10 * 10,
-              ) / 10
-            : 0;
-        const businessEtiquetteScore =
-          businessEtiquetteTotal > 0
-            ? Math.round(
-                (businessEtiquetteCorrect / businessEtiquetteTotal) * 10 * 10,
-              ) / 10
-            : 0;
-        const communicationSkillsScore =
-          communicationSkillsTotal > 0
-            ? Math.round(
-                (communicationSkillsCorrect / communicationSkillsTotal) *
-                  10 *
-                  10,
-              ) / 10
-            : 0;
+        setModuleScores((prev) => ({ ...prev, [moduleType]: finalScore }));
 
-        categoryScores = {
-          assessment_decisionMaking_generalScore: decisionMakingScore,
-          assessment_businessEtiquette_generalScore: businessEtiquetteScore,
-          assessment_communicationSkills_generalScore: communicationSkillsScore,
-        };
-      }
-
-      setModuleScores((prev) => ({ ...prev, [moduleType]: finalScore }));
-
-      localStorage.setItem(
-        `ASSESSMENT_${moduleType.toUpperCase()}_SCORE`,
-        finalScore.toString(),
-      );
-
-      const existingScores = JSON.parse(
-        localStorage.getItem("ASSESSMENT_FINAL_SCORES") || "{}",
-      ) as Partial<CalculatedScores>;
-
-      const allScores: CalculatedScores = {
-        assessment_generalScore:
-          moduleType === "general"
-            ? finalScore
-            : existingScores.assessment_generalScore ||
-              moduleScores.general ||
-              0,
-        assessment_readingScore:
-          moduleType === "reading"
-            ? finalScore
-            : existingScores.assessment_readingScore ||
-              moduleScores.reading ||
-              0,
-        assessment_listeningScore:
-          moduleType === "listening"
-            ? finalScore
-            : existingScores.assessment_listeningScore ||
-              moduleScores.listening ||
-              0,
-        assessment_writingScore: existingScores.assessment_writingScore || 0,
-        assessment_speakingScore: existingScores.assessment_speakingScore || 0,
-        assessment_decisionMaking_generalScore:
-          moduleType === "general"
-            ? categoryScores.assessment_decisionMaking_generalScore
-            : existingScores.assessment_decisionMaking_generalScore || 0,
-        assessment_businessEtiquette_generalScore:
-          moduleType === "general"
-            ? categoryScores.assessment_businessEtiquette_generalScore
-            : existingScores.assessment_businessEtiquette_generalScore || 0,
-        assessment_communicationSkills_generalScore:
-          moduleType === "general"
-            ? categoryScores.assessment_communicationSkills_generalScore
-            : existingScores.assessment_communicationSkills_generalScore || 0,
-      };
-
-      if (moduleType === "general") {
-        allScores.assessment_generalScore = finalScore;
-        allScores.assessment_decisionMaking_generalScore =
-          categoryScores.assessment_decisionMaking_generalScore;
-        allScores.assessment_businessEtiquette_generalScore =
-          categoryScores.assessment_businessEtiquette_generalScore;
-        allScores.assessment_communicationSkills_generalScore =
-          categoryScores.assessment_communicationSkills_generalScore;
-      } else if (moduleType === "reading") {
-        allScores.assessment_readingScore = finalScore;
-      } else if (moduleType === "listening") {
-        allScores.assessment_listeningScore = finalScore;
-      }
-
-      localStorage.setItem(
-        "ASSESSMENT_FINAL_SCORES",
-        JSON.stringify(allScores),
-      );
-      setCalculatedScores(allScores);
-
-      setIsCalculatingScore(false);
-      return finalScore;
-    } catch (error) {
-      console.error(`Error calculating ${moduleType} score:`, error);
-      setIsCalculatingScore(false);
-      return 0;
-    }
-  };
-
-  const checkAnswerCorrectness = (
-    userAnswer: string,
-    queCorrectAns: string,
-    queSolution: string,
-    question: Question,
-  ): boolean => {
-    if (!userAnswer) return false;
-
-    if (question?.queType === "MCQ") {
-      if (userAnswer === queCorrectAns) {
-        return true;
-      }
-
-      if (queCorrectAns && queCorrectAns.startsWith("Option")) {
-        const optionNumber = queCorrectAns.replace("Option", "");
-        if (userAnswer === optionNumber) {
-          return true;
-        }
-      }
-
-      if (question?.queOptions) {
-        const correctOption = question.queOptions.find(
-          (option) => option.optionID === queCorrectAns,
+        localStorage.setItem(
+          `ASSESSMENT_${moduleType.toUpperCase()}_SCORE`,
+          finalScore.toString(),
         );
 
-        if (correctOption && userAnswer === correctOption.optionText) {
-          return true;
+        const existingScores = JSON.parse(
+          localStorage.getItem("ASSESSMENT_FINAL_SCORES") || "{}",
+        ) as Partial<CalculatedScores>;
+
+        const allScores: CalculatedScores = {
+          assessment_generalScore:
+            moduleType === "general"
+              ? finalScore
+              : existingScores.assessment_generalScore ||
+                moduleScores.general ||
+                0,
+          assessment_readingScore:
+            moduleType === "reading"
+              ? finalScore
+              : existingScores.assessment_readingScore ||
+                moduleScores.reading ||
+                0,
+          assessment_listeningScore:
+            moduleType === "listening"
+              ? finalScore
+              : existingScores.assessment_listeningScore ||
+                moduleScores.listening ||
+                0,
+          assessment_writingScore: existingScores.assessment_writingScore || 0,
+          assessment_speakingScore:
+            existingScores.assessment_speakingScore || 0,
+          assessment_decisionMaking_generalScore:
+            moduleType === "general"
+              ? categoryScores.assessment_decisionMaking_generalScore
+              : existingScores.assessment_decisionMaking_generalScore || 0,
+          assessment_businessEtiquette_generalScore:
+            moduleType === "general"
+              ? categoryScores.assessment_businessEtiquette_generalScore
+              : existingScores.assessment_businessEtiquette_generalScore || 0,
+          assessment_communicationSkills_generalScore:
+            moduleType === "general"
+              ? categoryScores.assessment_communicationSkills_generalScore
+              : existingScores.assessment_communicationSkills_generalScore || 0,
+        };
+
+        if (moduleType === "general") {
+          allScores.assessment_generalScore = finalScore;
+          allScores.assessment_decisionMaking_generalScore =
+            categoryScores.assessment_decisionMaking_generalScore;
+          allScores.assessment_businessEtiquette_generalScore =
+            categoryScores.assessment_businessEtiquette_generalScore;
+          allScores.assessment_communicationSkills_generalScore =
+            categoryScores.assessment_communicationSkills_generalScore;
+        } else if (moduleType === "reading") {
+          allScores.assessment_readingScore = finalScore;
+        } else if (moduleType === "listening") {
+          allScores.assessment_listeningScore = finalScore;
         }
-      }
 
-      if (question?.correctoption && userAnswer === question.correctoption) {
-        return true;
-      }
-    }
+        localStorage.setItem(
+          "ASSESSMENT_FINAL_SCORES",
+          JSON.stringify(allScores),
+        );
+        setCalculatedScores(allScores);
 
-    if (question?.queType === "Single Text" && queSolution) {
-      if (userAnswer === queSolution) {
-        return true;
+        setIsCalculatingScore(false);
+        return finalScore;
+      } catch (error) {
+        console.error(`Error calculating ${moduleType} score:`, error);
+        setIsCalculatingScore(false);
+        return 0;
       }
-
-      if (
-        userAnswer.toLowerCase().trim() === queSolution.toLowerCase().trim()
-      ) {
-        return true;
-      }
-
-      if (
-        queSolution === "1" ||
-        queSolution === "2" ||
-        queSolution === "3" ||
-        queSolution === "4"
-      ) {
-        if (userAnswer === queSolution) {
-          return true;
-        }
-      }
-    }
-
-    if (queSolution && question?.queType !== "MCQ") {
-      if (userAnswer === queSolution) {
-        return true;
-      }
-
-      if (
-        userAnswer.toLowerCase().trim() === queSolution.toLowerCase().trim()
-      ) {
-        return true;
-      }
-
-      if (
-        queSolution === "1" ||
-        queSolution === "2" ||
-        queSolution === "3" ||
-        queSolution === "4"
-      ) {
-        if (userAnswer === queSolution) {
-          return true;
-        }
-      }
-    }
-
-    if (queCorrectAns && question?.queType !== "MCQ") {
-      if (userAnswer === queCorrectAns) {
-        return true;
-      }
-
-      if (
-        userAnswer.toLowerCase().trim() === queCorrectAns.toLowerCase().trim()
-      ) {
-        return true;
-      }
-    }
-
-    return false;
-  };
+    },
+    [checkAnswerCorrectness, moduleScores],
+  );
 
   const startRecording = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -621,8 +736,18 @@ const NewAssessment = () => {
     try {
       setIsloading(true);
 
+      // Validate OpenAI API key before proceeding
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+      if (!apiKey || apiKey.trim() === "") {
+        toast.error(
+          "OpenAI API key is not configured. Please contact support.",
+        );
+        setIsloading(false);
+        return;
+      }
+
       const openai = new OpenAI({
-        apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+        apiKey: apiKey,
         dangerouslyAllowBrowser: true,
       });
 
@@ -654,23 +779,45 @@ Here are the responses to evaluate:
 ${writingText}`,
       };
 
-      const writingCompletion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [writingAssessmentPrompt],
-        max_tokens: 500,
-        temperature: 0.7,
-      });
+      let writingScore = 0;
+      let writingAssessment = "";
 
-      const writingAssessment =
-        writingCompletion.choices[0].message.content || "";
+      try {
+        const writingCompletion = await openai.chat.completions.create({
+          model: "gpt-4",
+          messages: [writingAssessmentPrompt],
+          max_tokens: 500,
+          temperature: 0.7,
+        });
 
-      const writingScoreMatch =
-        writingAssessment.match(/final score:?\s*(\d+\.?\d*)/i) ||
-        writingAssessment.match(/overall:?\s*(\d+\.?\d*)/i) ||
-        writingAssessment.match(/score:?\s*(\d+\.?\d*)/i);
-      const writingScore = writingScoreMatch
-        ? parseFloat(writingScoreMatch[1])
-        : 0;
+        writingAssessment =
+          writingCompletion.choices[0]?.message?.content || "";
+
+        if (!writingAssessment) {
+          throw new Error("Empty response from OpenAI for writing assessment");
+        }
+
+        const writingScoreMatch =
+          writingAssessment.match(/final score:?\s*(\d+\.?\d*)/i) ||
+          writingAssessment.match(/overall:?\s*(\d+\.?\d*)/i) ||
+          writingAssessment.match(/score:?\s*(\d+\.?\d*)/i);
+        writingScore = writingScoreMatch ? parseFloat(writingScoreMatch[1]) : 0;
+
+        // Validate score is within expected range
+        if (
+          Number.isNaN(writingScore) ||
+          writingScore < 0 ||
+          writingScore > 10
+        ) {
+          console.warn("Invalid writing score extracted, defaulting to 0");
+          writingScore = 0;
+        }
+      } catch (error) {
+        console.error("Error evaluating writing:", error);
+        toast.error("Failed to evaluate writing assessment. Please try again.");
+        setIsloading(false);
+        return;
+      }
 
       const generalAnswers = sections.general.map((question) => ({
         questionId: question.queID,
@@ -700,23 +847,45 @@ Here are the responses to evaluate:
 ${generalText}`,
       };
 
-      const generalCompletion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [generalAssessmentPrompt],
-        max_tokens: 500,
-        temperature: 0.7,
-      });
+      let generalScore = 0;
+      let generalAssessment = "";
 
-      const generalAssessment =
-        generalCompletion.choices[0].message.content || "";
+      try {
+        const generalCompletion = await openai.chat.completions.create({
+          model: "gpt-4",
+          messages: [generalAssessmentPrompt],
+          max_tokens: 500,
+          temperature: 0.7,
+        });
 
-      const generalScoreMatch =
-        generalAssessment.match(/final score:?\s*(\d+\.?\d*)/i) ||
-        generalAssessment.match(/overall:?\s*(\d+\.?\d*)/i) ||
-        generalAssessment.match(/score:?\s*(\d+\.?\d*)/i);
-      const generalScore = generalScoreMatch
-        ? parseFloat(generalScoreMatch[1])
-        : 0;
+        generalAssessment =
+          generalCompletion.choices[0]?.message?.content || "";
+
+        if (!generalAssessment) {
+          throw new Error("Empty response from OpenAI for general assessment");
+        }
+
+        const generalScoreMatch =
+          generalAssessment.match(/final score:?\s*(\d+\.?\d*)/i) ||
+          generalAssessment.match(/overall:?\s*(\d+\.?\d*)/i) ||
+          generalAssessment.match(/score:?\s*(\d+\.?\d*)/i);
+        generalScore = generalScoreMatch ? parseFloat(generalScoreMatch[1]) : 0;
+
+        // Validate score is within expected range
+        if (
+          Number.isNaN(generalScore) ||
+          generalScore < 0 ||
+          generalScore > 10
+        ) {
+          console.warn("Invalid general score extracted, defaulting to 0");
+          generalScore = 0;
+        }
+      } catch (error) {
+        console.error("Error evaluating general assessment:", error);
+        toast.error("Failed to evaluate general assessment. Please try again.");
+        setIsloading(false);
+        return;
+      }
 
       const readingAnswers = sections.reading.map((question) => ({
         questionId: question.queID,
@@ -746,23 +915,45 @@ Here are the responses to evaluate:
 ${readingText}`,
       };
 
-      const readingCompletion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [readingAssessmentPrompt],
-        max_tokens: 500,
-        temperature: 0.7,
-      });
+      let readingScore = 0;
+      let readingAssessment = "";
 
-      const readingAssessment =
-        readingCompletion.choices[0].message.content || "";
+      try {
+        const readingCompletion = await openai.chat.completions.create({
+          model: "gpt-4",
+          messages: [readingAssessmentPrompt],
+          max_tokens: 500,
+          temperature: 0.7,
+        });
 
-      const readingScoreMatch =
-        readingAssessment.match(/final score:?\s*(\d+\.?\d*)/i) ||
-        readingAssessment.match(/overall:?\s*(\d+\.?\d*)/i) ||
-        readingAssessment.match(/score:?\s*(\d+\.?\d*)/i);
-      const readingScore = readingScoreMatch
-        ? parseFloat(readingScoreMatch[1])
-        : 0;
+        readingAssessment =
+          readingCompletion.choices[0]?.message?.content || "";
+
+        if (!readingAssessment) {
+          throw new Error("Empty response from OpenAI for reading assessment");
+        }
+
+        const readingScoreMatch =
+          readingAssessment.match(/final score:?\s*(\d+\.?\d*)/i) ||
+          readingAssessment.match(/overall:?\s*(\d+\.?\d*)/i) ||
+          readingAssessment.match(/score:?\s*(\d+\.?\d*)/i);
+        readingScore = readingScoreMatch ? parseFloat(readingScoreMatch[1]) : 0;
+
+        // Validate score is within expected range
+        if (
+          Number.isNaN(readingScore) ||
+          readingScore < 0 ||
+          readingScore > 10
+        ) {
+          console.warn("Invalid reading score extracted, defaulting to 0");
+          readingScore = 0;
+        }
+      } catch (error) {
+        console.error("Error evaluating reading assessment:", error);
+        toast.error("Failed to evaluate reading assessment. Please try again.");
+        setIsloading(false);
+        return;
+      }
 
       const listeningAnswers = sections.listening.map((question) => ({
         questionId: question.queID,
@@ -792,39 +983,78 @@ Here are the responses to evaluate:
 ${listeningText}`,
       };
 
-      const listeningCompletion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [listeningAssessmentPrompt],
-        max_tokens: 500,
-        temperature: 0.7,
-      });
+      let listeningScore = 0;
+      let listeningAssessment = "";
 
-      const listeningAssessment =
-        listeningCompletion.choices[0].message.content || "";
+      try {
+        const listeningCompletion = await openai.chat.completions.create({
+          model: "gpt-4",
+          messages: [listeningAssessmentPrompt],
+          max_tokens: 500,
+          temperature: 0.7,
+        });
 
-      const listeningScoreMatch =
-        listeningAssessment.match(/final score:?\s*(\d+\.?\d*)/i) ||
-        listeningAssessment.match(/overall:?\s*(\d+\.?\d*)/i) ||
-        listeningAssessment.match(/score:?\s*(\d+\.?\d*)/i);
-      const listeningScore = listeningScoreMatch
-        ? parseFloat(listeningScoreMatch[1])
-        : 0;
+        listeningAssessment =
+          listeningCompletion.choices[0]?.message?.content || "";
+
+        if (!listeningAssessment) {
+          throw new Error(
+            "Empty response from OpenAI for listening assessment",
+          );
+        }
+
+        const listeningScoreMatch =
+          listeningAssessment.match(/final score:?\s*(\d+\.?\d*)/i) ||
+          listeningAssessment.match(/overall:?\s*(\d+\.?\d*)/i) ||
+          listeningAssessment.match(/score:?\s*(\d+\.?\d*)/i);
+        listeningScore = listeningScoreMatch
+          ? parseFloat(listeningScoreMatch[1])
+          : 0;
+
+        // Validate score is within expected range
+        if (
+          Number.isNaN(listeningScore) ||
+          listeningScore < 0 ||
+          listeningScore > 10
+        ) {
+          console.warn("Invalid listening score extracted, defaulting to 0");
+          listeningScore = 0;
+        }
+      } catch (error) {
+        console.error("Error evaluating listening assessment:", error);
+        toast.error(
+          "Failed to evaluate listening assessment. Please try again.",
+        );
+        setIsloading(false);
+        return;
+      }
 
       let assessment_speakingScore = 0;
       let speakingAssessment = "";
 
       if (audioBlob) {
-        const audioFile = new File([audioBlob], "audio.webm", {
-          type: "audio/webm",
-        });
-        const transcription = await openai.audio.transcriptions.create({
-          file: audioFile,
-          model: "whisper-1",
-        });
+        try {
+          // Validate audio blob
+          if (audioBlob.size === 0) {
+            throw new Error("Audio recording is empty");
+          }
 
-        const speakingAssessmentPrompt = {
-          role: "system" as const,
-          content: `You are a professional speaking assessor. Evaluate the following business speaking response based on:
+          const audioFile = new File([audioBlob], "audio.webm", {
+            type: "audio/webm",
+          });
+
+          const transcription = await openai.audio.transcriptions.create({
+            file: audioFile,
+            model: "whisper-1",
+          });
+
+          if (!transcription?.text || transcription.text.trim() === "") {
+            throw new Error("Empty transcription received from OpenAI");
+          }
+
+          const speakingAssessmentPrompt = {
+            role: "system" as const,
+            content: `You are a professional speaking assessor. Evaluate the following business speaking response based on:
 1. Pronunciation and Clarity (1-10)
 2. Fluency and Pace (1-10)
 3. Grammar and Vocabulary (1-10)
@@ -835,25 +1065,49 @@ Also provide brief feedback for improvement.
 
 Here is the transcribed response to evaluate:
 ${transcription.text}`,
-        };
+          };
 
-        const speakingCompletion = await openai.chat.completions.create({
-          model: "gpt-4",
-          messages: [speakingAssessmentPrompt],
-          max_tokens: 500,
-          temperature: 0.7,
-        });
+          const speakingCompletion = await openai.chat.completions.create({
+            model: "gpt-4",
+            messages: [speakingAssessmentPrompt],
+            max_tokens: 500,
+            temperature: 0.7,
+          });
 
-        speakingAssessment =
-          speakingCompletion.choices[0].message.content || "";
+          speakingAssessment =
+            speakingCompletion.choices[0]?.message?.content || "";
 
-        const speakingScoreMatch =
-          speakingAssessment.match(/final score:?\s*(\d+\.?\d*)/i) ||
-          speakingAssessment.match(/overall:?\s*(\d+\.?\d*)/i) ||
-          speakingAssessment.match(/score:?\s*(\d+\.?\d*)/i);
-        assessment_speakingScore = speakingScoreMatch
-          ? parseFloat(speakingScoreMatch[1])
-          : 0;
+          if (!speakingAssessment) {
+            throw new Error(
+              "Empty response from OpenAI for speaking assessment",
+            );
+          }
+
+          const speakingScoreMatch =
+            speakingAssessment.match(/final score:?\s*(\d+\.?\d*)/i) ||
+            speakingAssessment.match(/overall:?\s*(\d+\.?\d*)/i) ||
+            speakingAssessment.match(/score:?\s*(\d+\.?\d*)/i);
+          assessment_speakingScore = speakingScoreMatch
+            ? parseFloat(speakingScoreMatch[1])
+            : 0;
+
+          // Validate score is within expected range
+          if (
+            Number.isNaN(assessment_speakingScore) ||
+            assessment_speakingScore < 0 ||
+            assessment_speakingScore > 10
+          ) {
+            console.warn("Invalid speaking score extracted, defaulting to 0");
+            assessment_speakingScore = 0;
+          }
+        } catch (error) {
+          console.error("Error evaluating speaking assessment:", error);
+          toast.error(
+            "Failed to evaluate speaking assessment. Please try again.",
+          );
+          setIsloading(false);
+          return;
+        }
       }
 
       const textBlob = new Blob([writingText], { type: "text/plain" });
@@ -863,13 +1117,16 @@ ${transcription.text}`,
         textUrl: "",
         videoUrl: "",
       };
-      try {
-        if (!audioBlob) {
-          throw new Error("No audio recording found");
-        }
 
-        const mp3Blob = await convertToMP3(audioBlob);
-        fileUrls = await uploadAssessmentFiles(mp3Blob, textBlob);
+      // Only attempt file upload if we have valid data
+      try {
+        if (!audioBlob || audioBlob.size === 0) {
+          console.warn("No audio recording found, skipping audio upload");
+          // Continue without audio URL - we still have the scores
+        } else {
+          const mp3Blob = await convertToMP3(audioBlob);
+          fileUrls = await uploadAssessmentFiles(mp3Blob, textBlob);
+        }
 
         const assessmentData = {
           speakingURL: fileUrls.audioUrl,
@@ -914,14 +1171,23 @@ ${transcription.text}`,
         });
 
         assessmentProgress.setArrAnswers(updatedAnswers);
-        uploadImageToServer();
+
+        // Upload to server (non-blocking - don't fail if this fails)
+        uploadImageToServer().catch((error) => {
+          console.error("Error uploading to server:", error);
+          // Don't show error to user as scores are already saved
+        });
       } catch (error) {
         console.error("Error uploading assessment files:", error);
-        toast.error(
-          "Failed to upload assessment files: " +
-            (error instanceof Error ? error.message : "Unknown error"),
+        // Don't fail the entire assessment if file upload fails
+        // Scores are already calculated and saved
+        toast.warn(
+          "Assessment completed but file upload failed. Scores have been saved.",
         );
-        setIsloading(false);
+        // Still proceed with submission
+        uploadImageToServer().catch(() => {
+          // Silent fail - scores are already saved
+        });
       }
     } catch (error) {
       console.error("Error handling submission:", error);
@@ -1203,43 +1469,48 @@ ${transcription.text}`,
     }
   };
 
-  const uploadImageToServer = () => {
-    setIsloading(true);
+  const uploadImageToServer = async (): Promise<void> => {
+    try {
+      setIsloading(true);
 
-    const formData = new FormData();
-    if (audioBlob) {
-      formData.append("FileField", audioBlob, `recording${userId}.mp4`);
-    }
+      const formData = new FormData();
+      if (audioBlob) {
+        formData.append("FileField", audioBlob, `recording${userId}.mp4`);
+      }
 
-    formData.append("FilePath", "users");
-    formData.append(
-      "json",
-      JSON.stringify([
-        { loginuserID: userId, apiType: "Android", apiVersion: "1.0" },
-      ]),
-    );
+      formData.append("FilePath", "users");
+      formData.append(
+        "json",
+        JSON.stringify([
+          { loginuserID: userId, apiType: "Android", apiVersion: "1.0" },
+        ]),
+      );
 
-    const apiUrl =
-      environment.production == true
-        ? environment.apiBaseUrl + "users/file-upload"
-        : "/api/users/file-upload";
+      const apiUrl =
+        environment.production === true
+          ? environment.apiBaseUrl + "users/file-upload"
+          : "/api/users/file-upload";
 
-    fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer access-token",
-      },
-      body: formData,
-    })
-      .then((response) => response.json())
-      .then(() => {
-        // console.log('Image uploaded successfully:', JSON.stringify(data));
-        submitExamApi();
-      })
-      .catch((error) => {
-        console.error("Error uploading image:", error);
-        setIsloading(false);
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer access-token",
+        },
+        body: formData,
       });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed with status: ${response.status}`);
+      }
+
+      await response.json();
+      // console.log('Image uploaded successfully:', JSON.stringify(data));
+      submitExamApi();
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      setIsloading(false);
+      throw error; // Re-throw so caller can handle it
+    }
   };
 
   const checktheStatus = () => {
@@ -1991,7 +2262,7 @@ ${transcription.text}`,
             {currentSection !== "general" && (
               <button
                 onClick={handlePrevious}
-                disabled={currentQuestionIndex === 0}
+                disabled={currentQuestionIndex === 0 || isCalculatingScore}
                 className="w-full md:w-auto px-4 md:px-6 py-2 bg-gray-200 rounded-lg disabled:opacity-50 text-sm md:text-base"
               >
                 Previous
@@ -2001,18 +2272,22 @@ ${transcription.text}`,
             currentQuestionIndex === sections.speaking.length - 1 ? (
               <button
                 onClick={handleSubmit}
-                className="w-full md:w-auto px-4 md:px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm md:text-base"
+                disabled={isCalculatingScore}
+                className={`w-full md:w-auto px-4 md:px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm md:text-base ${
+                  isCalculatingScore ? "opacity-50 cursor-not-allowed" : ""
+                }`}
               >
                 Submit
               </button>
             ) : (
               <button
                 onClick={handleNext}
+                disabled={isCalculatingScore}
                 className={`w-full md:w-auto px-4 md:px-6 py-2 bg-primary text-white rounded-lg text-sm md:text-base ${
                   currentSection === "general" ? "md:ml-auto" : ""
-                }`}
+                } ${isCalculatingScore ? "opacity-50 cursor-not-allowed" : ""}`}
               >
-                Next
+                {isCalculatingScore ? "Calculating..." : "Next"}
               </button>
             )}
           </div>
