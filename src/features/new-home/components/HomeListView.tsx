@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useStore } from "@/store";
+import { Loader2, X, AlertCircle } from "lucide-react";
 import { environment } from "../environment";
 import VideoPopUp from "./VideoPopUp";
 import PdfPopUp from "./PdfPopUp";
@@ -75,6 +76,17 @@ const HomeListView = ({
     { src: string; label: string; srclang: string; default?: boolean }[]
   >([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Auto-dismiss error message after 5 seconds
+  useEffect(() => {
+    if (errorMessage) {
+      const timer = setTimeout(() => {
+        setErrorMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [errorMessage]);
 
   const {
     arrQuestions,
@@ -164,7 +176,7 @@ const HomeListView = ({
     return audioExtensions.some((ext) => lowerUrl.includes(ext));
   };
 
-  const getQuestionsApi = (moduleID: string) => {
+  const getQuestionsApi = async (moduleID: string) => {
     try {
       const dictParameter = JSON.stringify([
         {
@@ -179,7 +191,7 @@ const HomeListView = ({
         },
       ]);
       // console.log('params for lesson/get-questions', dictParameter);
-      fetch(
+      const response = await fetch(
         environment.production
           ? environment.apiBaseUrl + "lesson/get-questions"
           : "/api/lesson/get-questions",
@@ -190,37 +202,65 @@ const HomeListView = ({
           }),
           body: "json=" + dictParameter,
         },
-      )
-        .then((response) => response.json())
-        .then((responseJson) => {
-          const arrData = responseJson;
-          const status_ = responseJson[0]?.status;
-          localStorage.setItem(
-            `QuestionsFor${item.LessonID}${moduleID}`,
-            JSON.stringify(arrData[0]?.questions?.[0] ?? {}),
-          );
-          // console.log('lesson/get-questions', responseJson);
-          setArrQuestions(arrData[0]?.questions ?? []);
-          if (status_ !== "false") {
-            const nextFileUrl = arrData[0]?.questions?.[0]?.queFile ?? null;
-            if (nextFileUrl == null) {
-              navigate("/LUTest");
-            } else if (isAudioFile(nextFileUrl)) {
-              setAudioUrl(nextFileUrl);
-              setIsLessonAudioWatch(true);
-            } else {
-              setPdfUrl(nextFileUrl);
-              setIsLessonPDFWatch(true);
-            }
-          }
-        });
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseJson = await response.json();
+      const arrData = responseJson;
+      const status_ = responseJson[0]?.status;
+
+      if (!arrData || !arrData[0]) {
+        throw new Error("Invalid response format from API");
+      }
+
+      localStorage.setItem(
+        `QuestionsFor${item.LessonID}${moduleID}`,
+        JSON.stringify(arrData[0]?.questions?.[0] ?? {}),
+      );
+      // console.log('lesson/get-questions', responseJson);
+      setArrQuestions(arrData[0]?.questions ?? []);
+
+      if (status_ !== "false") {
+        const nextFileUrl = arrData[0]?.questions?.[0]?.queFile ?? null;
+        if (nextFileUrl == null) {
+          navigate("/LUTest");
+        } else if (isAudioFile(nextFileUrl)) {
+          setAudioUrl(nextFileUrl);
+          setIsLessonAudioWatch(true);
+        } else {
+          setPdfUrl(nextFileUrl);
+          setIsLessonPDFWatch(true);
+        }
+      } else {
+        const message =
+          responseJson[0]?.message || "No questions available for this module.";
+        setErrorMessage(message);
+        console.warn(
+          "getQuestionsApi: Status is false for moduleID:",
+          moduleID,
+          "Message:",
+          message,
+        );
+        throw new Error(message);
+      }
     } catch (error) {
-      console.error("Error in Fetching Questions", error);
+      console.error("Error in Fetching Questions:", error);
+      const errorMsg =
+        error instanceof Error
+          ? error.message
+          : "Failed to load questions. Please try again.";
+      setErrorMessage(errorMsg);
+      // Re-throw to allow caller to handle
+      throw error;
     }
   };
 
   const getExamResult = async (moduleID: string) => {
     setIsLoading(true);
+    setErrorMessage(null); // Clear any previous error messages
     // console.log('=== ITEM DEBUG ===', item);
     setLessonId(Number(item.LessonID));
     setModuleIds(moduleIDs);
@@ -235,6 +275,11 @@ const HomeListView = ({
       }
     } catch (error) {
       console.error("Error handling module:", error);
+      const errorMsg =
+        error instanceof Error
+          ? error.message
+          : "Failed to load module. Please try again.";
+      setErrorMessage(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -306,6 +351,11 @@ const HomeListView = ({
           body: "json=" + dictParameter,
         },
       );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const responseJson = await response.json();
       // console.log('responseJson of result', responseJson);
       const status = responseJson[0]?.status;
@@ -351,13 +401,19 @@ const HomeListView = ({
           localStorage.setItem("LUResultModuleId", moduleID);
           navigate("/LUResult");
         } else {
-          getQuestionsApi(moduleID);
+          await getQuestionsApi(moduleID);
         }
       } else {
-        getQuestionsApi(moduleID);
+        await getQuestionsApi(moduleID);
       }
     } catch (error) {
-      console.error("Error in Fetching Questions:", error);
+      console.error("Error in handleExistingModule:", error);
+      // If there's an error, still try to get questions as fallback
+      try {
+        await getQuestionsApi(moduleID);
+      } catch (fallbackError) {
+        console.error("Error in fallback getQuestionsApi:", fallbackError);
+      }
     }
   };
 
@@ -510,10 +566,29 @@ const HomeListView = ({
         </button>
       </div>
       {isLoading && (
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10 rounded-md">
-          <div className="bg-white p-4 rounded-lg shadow-lg">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-md">
+          <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm text-gray-600">Loading module...</p>
+          </div>
+        </div>
+      )}
+      {errorMessage && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 max-w-md">
+          <div className="bg-red-50 border border-red-200 rounded-lg shadow-lg p-4 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800">Error</p>
+              <p className="text-sm text-red-700 mt-1">{errorMessage}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setErrorMessage(null)}
+              className="text-red-600 hover:text-red-800 transition-colors shrink-0"
+              aria-label="Close error message"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
       )}
