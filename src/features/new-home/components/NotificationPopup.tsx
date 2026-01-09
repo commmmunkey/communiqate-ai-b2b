@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { environment } from '../environment';
+import { API_BASE_URL } from '@/lib/constants';
 import Loading from '@/components/Loading';
 import IconNotificationItem from '../assets/notification_orange.png';
 
@@ -31,9 +31,7 @@ const NotificationPopup = ({ onClose }: NotificationPopupProps) => {
 				},
 			]);
 			fetch(
-				environment.production
-					? environment.apiBaseUrl + 'notification/get-notification-list'
-					: '/api/notification/get-notification-list',
+				`${API_BASE_URL}notification/get-notification-list`,
 				{
 					method: 'POST',
 					headers: new Headers({

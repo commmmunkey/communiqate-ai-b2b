@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useStore } from "@/store";
 import { Loader2, X, AlertCircle } from "lucide-react";
-import { environment } from "../environment";
+import { API_BASE_URL } from "@/lib/constants";
 import VideoPopUp from "./VideoPopUp";
 import PdfPopUp from "./PdfPopUp";
 import AudioPopUp from "./AudioPopUp";
@@ -119,18 +119,13 @@ const HomeListView = ({
         { lessionId: item.LessonID, apiType: "Android", apiVersion: "1.0" },
       ]);
       // console.log('params for corporate/subtitle-info', dictParameter);
-      fetch(
-        environment.production
-          ? environment.apiBaseUrl + "corporate/subtitle-info"
-          : "/api/corporate/subtitle-info",
-        {
-          method: "POST",
-          headers: new Headers({
-            "Content-Type": "application/x-www-form-urlencoded",
-          }),
-          body: "json=" + dictParameter,
-        },
-      )
+      fetch(`${API_BASE_URL}corporate/subtitle-info`, {
+        method: "POST",
+        headers: new Headers({
+          "Content-Type": "application/x-www-form-urlencoded",
+        }),
+        body: "json=" + dictParameter,
+      })
         .then((response) => response.json())
         .then((responseJson) => {
           const status_ = responseJson[0]?.status;
@@ -191,18 +186,13 @@ const HomeListView = ({
         },
       ]);
       // console.log('params for lesson/get-questions', dictParameter);
-      const response = await fetch(
-        environment.production
-          ? environment.apiBaseUrl + "lesson/get-questions"
-          : "/api/lesson/get-questions",
-        {
-          method: "POST",
-          headers: new Headers({
-            "Content-Type": "application/x-www-form-urlencoded",
-          }),
-          body: "json=" + dictParameter,
-        },
-      );
+      const response = await fetch(`${API_BASE_URL}lesson/get-questions`, {
+        method: "POST",
+        headers: new Headers({
+          "Content-Type": "application/x-www-form-urlencoded",
+        }),
+        body: "json=" + dictParameter,
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -340,9 +330,7 @@ const HomeListView = ({
         },
       ]);
       const response = await fetch(
-        environment.production
-          ? environment.apiBaseUrl + "lesson/get-submitted-answers"
-          : "/api/lesson/get-submitted-answers",
+        `${API_BASE_URL}lesson/get-submitted-answers`,
         {
           method: "POST",
           headers: new Headers({

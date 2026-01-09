@@ -8,7 +8,7 @@ import StreamingAvatar, {
 } from "@heygen/streaming-avatar";
 import OpenAI from "openai";
 // import { Mic, MicOff, Download, Play, Pause } from "lucide-react";
-import { environment } from "./environment";
+import { API_BASE_URL } from "@/lib/constants";
 import WelcomeDialog from "./WelcomeDialog";
 // import MobileNavbar from '../components/MobileNavbar';
 import { useNavigate } from "react-router";
@@ -420,16 +420,24 @@ const SpeechToText = () => {
   });
 
   const initializeAvatar = async () => {
+    // Guard: Prevent multiple simultaneous initializations
+    if (isAvatarLoading || isAvatarInitialized || avatar !== null) {
+      console.log("Avatar initialization already in progress or completed");
+      return;
+    }
+
     setIsAvatarLoading(true);
 
     try {
       if (!videoRef.current) {
         toast.error("Video element not available. Please refresh.");
+        setIsAvatarLoading(false);
         return;
       }
 
       if (!token) {
         toast.error("Failed to initialize avatar: Could not get access token");
+        setIsAvatarLoading(false);
         return;
       }
 
@@ -475,22 +483,28 @@ const SpeechToText = () => {
 
   // CRITICAL: Initialize avatar when video element becomes ready (if config is already loaded) ✅
   useEffect(() => {
+    // Guard: Only initialize if all conditions are met and not already initialized
     if (
       isConfigLoaded &&
       !isConfigLoading &&
       videoRef.current &&
       isVideoElementReady &&
       !isAvatarInitialized &&
-      !isAvatarLoading
+      !isAvatarLoading &&
+      token && // Ensure token is available
+      avatar === null // Ensure avatar is not already set
     ) {
       initializeAvatar();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isConfigLoaded,
     isConfigLoading,
     isVideoElementReady,
     isAvatarInitialized,
     isAvatarLoading,
+    token, // Add token as dependency
+    // Note: initializeAvatar and avatar are intentionally excluded to prevent infinite loops
   ]);
 
   // ✅
@@ -1910,9 +1924,7 @@ const SpeechToText = () => {
       formData.append("textFile", textFile);
 
       // Use environment-based URL for API call
-      const apiUrl = environment.production
-        ? environment.apiBaseUrl + "users/upload-multiple-media"
-        : "/users/upload-multiple-media";
+      const apiUrl = `${API_BASE_URL}users/upload-multiple-media`;
 
       // Send upload request
       const response = await fetch(apiUrl, {
@@ -2088,9 +2100,7 @@ const SpeechToText = () => {
       formData.append("textFile", textFile);
 
       // Use environment-based URL for API call
-      const apiUrl = environment.production
-        ? environment.apiBaseUrl + "users/upload-multiple-media"
-        : "/users/upload-multiple-media";
+      const apiUrl = `${API_BASE_URL}users/upload-multiple-media`;
 
       // Send upload request
       const response = await fetch(apiUrl, {
@@ -2848,13 +2858,9 @@ const fetchInterviewConfigData = async () => {
     },
   ]);
 
-  const endpoint =
-    environment.production === true
-      ? `${environment.apiBaseUrl}assessment/get-ai-interview-config`
-      : "/assessment/get-ai-interview-config";
-
+  // apiClient already has baseURL configured, so use relative path
   const { data } = await apiClient.post(
-    endpoint,
+    "assessment/get-ai-interview-config",
     `json=${dictParameter}`, // Legacy body format preserved
     {
       headers: {
@@ -2942,13 +2948,9 @@ const useInitializeOpenAI = ({
       setIsConfigLoaded(true);
       setIsConfigLoading(false);
 
-      // Initialize Avatar Logic
-      // Check refs and flags immediately after config is available
-      if (videoRef.current && isVideoElementReady) {
-        initializeAvatar();
-      } else {
-        console.log("Config loaded but video element not ready yet");
-      }
+      // Initialize Avatar Logic - REMOVED: This is handled by the useEffect hook below
+      // Don't call initializeAvatar here to avoid duplicate calls
+      // The useEffect hook will handle initialization when conditions are met
     }
   }, [interviewConfig, isVideoElementReady]);
 
@@ -3003,8 +3005,11 @@ const useHeygenAccessToken = () => {
     },
     retry: 3,
     retryDelay: 2000,
-    staleTime: 0,
+    staleTime: 1000 * 60 * 30, // Token is fresh for 30 minutes
+    gcTime: 1000 * 60 * 60, // Keep in cache for 1 hour
     refetchOnWindowFocus: false,
+    refetchOnMount: false, // Don't refetch if data exists
+    refetchOnReconnect: false, // Don't refetch on reconnect
   });
 };
 

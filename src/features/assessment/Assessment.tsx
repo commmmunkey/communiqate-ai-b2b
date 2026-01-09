@@ -8,7 +8,7 @@ import {
   type Answer,
   type SectionType,
 } from "@/store";
-import { environment } from "./environment";
+import { API_BASE_URL } from "@/lib/constants";
 import Loading from "./components/Loading";
 import PreAssessmentModal from "./components/PreAssessmentModal";
 import AlreadyAssessmentModal from "./components/AlreadyAssessmentModal";
@@ -1361,9 +1361,7 @@ ${transcription.text}`,
       formData.append("textFile", textFile);
       formData.append("videoFile", videoFile);
 
-      const apiUrl = environment.production
-        ? environment.apiBaseUrl + "users/upload-multiple-media"
-        : "/api/users/upload-multiple-media";
+      const apiUrl = `${API_BASE_URL}users/upload-multiple-media`;
 
       const response = await fetch(apiUrl, {
         method: "POST",
@@ -1486,10 +1484,7 @@ ${transcription.text}`,
         ]),
       );
 
-      const apiUrl =
-        environment.production === true
-          ? environment.apiBaseUrl + "users/file-upload"
-          : "/api/users/file-upload";
+      const apiUrl = `${API_BASE_URL}users/file-upload`;
 
       const response = await fetch(apiUrl, {
         method: "POST",
@@ -1538,10 +1533,7 @@ ${transcription.text}`,
 
       // console.log("assessment/user-assessment-acess's dictParameter = " + dictParameter);
 
-      const apiUrl =
-        environment.production == true
-          ? environment.apiBaseUrl + "assessment/user-assessment-acess"
-          : "/api/assessment/user-assessment-acess";
+      const apiUrl = `${API_BASE_URL}assessment/user-assessment-acess`;
 
       fetch(apiUrl, {
         method: "POST",
@@ -1642,10 +1634,7 @@ ${transcription.text}`,
       // console.log("submitExamApi's dictParameter = " + dictParameter);
       // console.log("Using scores:", scores);
 
-      const apiUrl =
-        environment.production == true
-          ? environment.apiBaseUrl + "assessment/submit-user-assessment"
-          : "/api/assessment/submit-user-assessment";
+      const apiUrl = `${API_BASE_URL}assessment/submit-user-assessment`;
 
       fetch(apiUrl, {
         method: "POST",
@@ -1789,10 +1778,7 @@ ${transcription.text}`,
       ]);
       // console.log("dictParameter " + JSON.stringify(dictParameter));
 
-      const apiUrl =
-        environment.production == true
-          ? environment.apiBaseUrl + "assessment/get-new-questions"
-          : "/api/assessment/get-new-questions";
+      const apiUrl = `${API_BASE_URL}assessment/get-new-questions`;
 
       fetch(apiUrl, {
         method: "POST",
@@ -1840,10 +1826,7 @@ ${transcription.text}`,
       ]);
       // console.log("dictParameter " + JSON.stringify(dictParameter));
 
-      const apiUrl =
-        environment.production == true
-          ? environment.apiBaseUrl + "assessment/get-new-questions"
-          : "/api/assessment/get-new-questions";
+      const apiUrl = `${API_BASE_URL}assessment/get-new-questions`;
 
       fetch(apiUrl, {
         method: "POST",

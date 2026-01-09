@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useStore } from "@/store";
-import { environment } from "../environment";
+import { API_BASE_URL } from "@/lib/constants";
 
 interface ExamSummary {
   totalQuestions: number;
@@ -94,9 +94,7 @@ const ExamSubmitPopup = ({
         ])
       );
 
-      const url = environment.production
-        ? environment.apiBaseUrl + "users/file-upload"
-        : "/api/users/file-upload";
+      const url = `${API_BASE_URL}users/file-upload`;
       fetch(url, {
         method: "POST",
         headers: {
@@ -158,9 +156,7 @@ const ExamSubmitPopup = ({
         },
       ]);
 
-      const url = environment.production
-        ? environment.apiBaseUrl + "lesson/set-exam-time"
-        : "/api/lesson/set-exam-time";
+      const url = `${API_BASE_URL}lesson/set-exam-time`;
       fetch(url, {
         method: "POST",
         headers: new Headers({
@@ -215,9 +211,7 @@ const ExamSubmitPopup = ({
         },
       ]);
 
-      const url = environment.production
-        ? environment.apiBaseUrl + "lesson/submit-answers"
-        : "/api/lesson/submit-answers";
+      const url = `${API_BASE_URL}lesson/submit-answers`;
       fetch(url, {
         method: "POST",
         headers: new Headers({

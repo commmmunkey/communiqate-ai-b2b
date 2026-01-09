@@ -1,4 +1,4 @@
-import { environment } from '../environment';
+import { API_BASE_URL } from '@/lib/constants';
 
 interface EvaluationData {
   userId: number;
@@ -17,7 +17,7 @@ class EvaluationAPIService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = environment.production ? environment.apiBaseUrl : '';
+    this.baseUrl = API_BASE_URL;
   }
 
   async submitWritingEvaluation(data: EvaluationData) {
@@ -131,7 +131,7 @@ class EvaluationAPIService {
         apiVersion: "1.0"
       }]);
 
-      const url = environment.production ? environment.apiBaseUrl + "faculty/submit-evaluation" : "/api/faculty/submit-evaluation";
+      const url = `${API_BASE_URL}faculty/submit-evaluation`;
       const response = await fetch(url, {
         method: 'POST',
         headers: new Headers({
@@ -188,7 +188,7 @@ class EvaluationAPIService {
         evaluationDetails: data.evaluationDetails
       }]);
 
-      const url = environment.production ? environment.apiBaseUrl + "faculty/submit-evaluation" : "/api/faculty/submit-evaluation";
+      const url = `${API_BASE_URL}faculty/submit-evaluation`;
       const response = await fetch(url, {
         method: 'POST',
         headers: new Headers({

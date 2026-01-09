@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useStore } from "@/store";
-import { environment } from "./environment";
 import PdfPopUp from "./components/PdfPopUp";
 import ExamSubmitPopup from "./components/ExamSubmitPopup";
 import InfoIcon from "./assets/info_header_black.png";

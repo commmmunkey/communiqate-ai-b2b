@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useStore } from "@/store";
-import { environment } from "./environment";
+import { API_BASE_URL } from "@/lib/constants";
 import HomeListView from "./components/HomeListView";
 import Navbar from "./components/Navbar";
 import MobileNavbar from "./components/MobileNavbar";
@@ -98,9 +98,7 @@ const NewHome = () => {
         },
       ]);
       fetch(
-        environment.production
-          ? environment.apiBaseUrl + "users/user-home"
-          : "/api/users/user-home",
+        `${API_BASE_URL}users/user-home`,
         {
           method: "POST",
           headers: new Headers({
@@ -132,7 +130,7 @@ const NewHome = () => {
         },
       ]);
       fetch(
-        "https://stage.englishmonkapp.com/englishmonk-staging//backend/web/index.php/v1/faculty/get-faculty-practice-test3",
+        `${API_BASE_URL}faculty/get-faculty-practice-test3`,
         {
           method: "POST",
           headers: new Headers({
@@ -162,7 +160,7 @@ const NewHome = () => {
         },
       ]);
       fetch(
-        "https://stage.englishmonkapp.com/englishmonk-staging//backend/web/index.php/v1/faculty/get-homepage-lus",
+        `${API_BASE_URL}faculty/get-homepage-lus`,
         {
           method: "POST",
           headers: new Headers({

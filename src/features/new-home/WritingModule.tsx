@@ -4,7 +4,7 @@ import { useStore } from "@/store";
 import openAIEvaluationService from "./services/OpenAIEvaluationService";
 import evaluationAPIService from "./services/EvaluationAPIService";
 import EvaluationLoading from "./components/EvaluationLoading";
-import { environment } from "./environment";
+import { API_BASE_URL } from "@/lib/constants";
 
 const WritingModule = () => {
   const navigate = useNavigate();
@@ -88,9 +88,7 @@ const WritingModule = () => {
           apiVersion: "1.0",
         },
       ]);
-      const url = environment.production
-        ? environment.apiBaseUrl + "lesson/get-questions"
-        : "/api/lesson/get-questions";
+      const url = `${API_BASE_URL}lesson/get-questions`;
       const response = await fetch(url, {
         method: "POST",
         headers: new Headers({

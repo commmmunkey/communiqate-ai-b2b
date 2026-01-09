@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { useStore } from "@/store";
 import openAIEvaluationService from "./OpenAIEvaluationService";
 import EvaluationLoading from "./components/EvaluationLoading";
-import { environment } from "./environment";
+import { API_BASE_URL } from "@/lib/constants";
 
 interface EvaluationLoadingState {
   isVisible: boolean;
@@ -382,9 +382,7 @@ const AssessmentSpeakingModule = () => {
       formData.append("textFile", textFile);
 
       // Use environment-based URL for API call
-      const apiUrl = environment.production
-        ? environment.apiBaseUrl + "users/upload-multiple-media"
-        : "/api/users/upload-multiple-media";
+      const apiUrl = `${API_BASE_URL}users/upload-multiple-media`;
 
       // Send upload request
       const response = await fetch(apiUrl, {

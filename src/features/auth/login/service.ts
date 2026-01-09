@@ -20,7 +20,7 @@ export const loginApi = async ({ email, password }: LoginParams): Promise<UserDa
   };
 
   const response = await apiClient.post<LegacyApiResponse<UserData>[]>(
-    '/users/user-login-otp', 
+    'users/user-login-otp', 
     createLegacyBody(payload),
     {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
