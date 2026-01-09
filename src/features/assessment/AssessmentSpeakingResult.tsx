@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useStore } from "@/store";
+import { API_BASE_URL } from "@/lib/constants";
+import { toast } from "react-toastify";
 
 interface CalculatedScores {
   assessment_speakingScore?: number;
@@ -18,6 +20,7 @@ const AssessmentSpeakingResult = () => {
   const { assessmentSpeakingEvaluation } = useStore();
   const [calculatedScores, setCalculatedScores] =
     useState<CalculatedScores | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     // Set theme colors
@@ -101,6 +104,7 @@ const AssessmentSpeakingResult = () => {
             No assessment speaking results found.
           </p>
           <button
+            type="button"
             onClick={() => navigate(-1)}
             className="px-4 py-2 bg-primary text-white rounded hover:bg-blue-700"
           >
@@ -155,6 +159,124 @@ const AssessmentSpeakingResult = () => {
     ];
   };
 
+  const submitAssessmentToAPI = async () => {
+    try {
+      const userId = localStorage.getItem("USER_ID");
+      const corporateUserId = localStorage.getItem("corporateUserId") || userId;
+      const lessionId = localStorage.getItem("LESSON_ID") || "0";
+
+      // Get calculated scores from localStorage
+      const storedScores = localStorage.getItem("ASSESSMENT_FINAL_SCORES");
+      let scores: CalculatedScores = {
+        assessment_speakingScore: 0,
+        assessment_writingScore: 0,
+        assessment_listeningScore: 0,
+        assessment_readingScore: 0,
+        assessment_generalScore: 0,
+        assessment_businessEtiquette_generalScore: 0,
+        assessment_communicationSkills_generalScore: 0,
+        assessment_decisionMaking_generalScore: 0,
+      };
+
+      if (storedScores) {
+        try {
+          scores = JSON.parse(storedScores) as CalculatedScores;
+        } catch (error) {
+          console.error("Error parsing stored scores:", error);
+        }
+      }
+
+      // Use calculatedScores if available, otherwise use stored scores
+      if (calculatedScores) {
+        scores = { ...scores, ...calculatedScores };
+      }
+
+      const dictParameter = JSON.stringify([
+        {
+          corporateUserId: corporateUserId,
+          languageID: "1",
+          moduleID: "8",
+          apiType: "Android",
+          apiVersion: "1.0",
+          loginUserID: userId,
+          lessionID: parseInt(lessionId) || 7,
+          assessment_speakingScore: Math.round(
+            scores.assessment_speakingScore || 0,
+          ),
+          assessment_writingScore: Math.round(
+            scores.assessment_writingScore || 0,
+          ),
+          assessment_listeningScore: Math.round(
+            scores.assessment_listeningScore || 0,
+          ),
+          assessment_readingScore: Math.round(
+            scores.assessment_readingScore || 0,
+          ),
+          assessment_generalScore: Math.round(
+            scores.assessment_generalScore || 0,
+          ),
+          assessment_businessEtiquette_generalScore: Math.round(
+            scores.assessment_businessEtiquette_generalScore || 0,
+          ),
+          assessment_communicationSkills_generalScore: Math.round(
+            scores.assessment_communicationSkills_generalScore || 0,
+          ),
+          assessment_decisionMaking_generalScore: Math.round(
+            scores.assessment_decisionMaking_generalScore || 0,
+          ),
+        },
+      ]);
+
+      const apiUrl = `${API_BASE_URL}assessment/submit-user-assessment`;
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: new Headers({
+          "Content-Type": "application/x-www-form-urlencoded",
+        }),
+        body: "json=" + dictParameter,
+      });
+
+      const responseJson = await response.json();
+      console.log("Assessment API response:", JSON.stringify(responseJson));
+
+      return responseJson;
+    } catch (error) {
+      console.error("Error submitting assessment to API:", error);
+      throw error;
+    }
+  };
+
+  const handleFinalSubmission = async () => {
+    try {
+      setIsSubmitting(true);
+      console.log("Submitting final assessment results...");
+
+      // Use pre-calculated scores
+      if (!calculatedScores) {
+        console.error("No calculated scores available");
+        toast.error("No scores available to submit");
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log("Using pre-calculated scores:", calculatedScores);
+
+      // Call assessment submission API
+      await submitAssessmentToAPI();
+
+      toast.success("Assessment submitted successfully!");
+      console.log("Assessment scores submitted successfully.");
+
+      // Navigate to assessment completion page or back to assessment
+      navigate("/assessment-completion");
+    } catch (error) {
+      console.error("Error in final assessment submission:", error);
+      toast.error("Failed to submit assessment. Please try again.");
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -163,7 +285,8 @@ const AssessmentSpeakingResult = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate("assessment")}
+                type="button"
+                onClick={() => navigate("/assessment")}
                 className="text-gray-600 hover:text-gray-800"
               >
                 ← Back to Assessment
@@ -189,7 +312,11 @@ const AssessmentSpeakingResult = () => {
                 <svg
                   className="w-32 h-32 transform -rotate-90"
                   viewBox="0 0 120 120"
+                  aria-label="Score visualization"
                 >
+                  <title>
+                    Assessment Score: {scores.overall.toFixed(1)}/10
+                  </title>
                   <circle
                     cx="60"
                     cy="60"
@@ -279,12 +406,13 @@ const AssessmentSpeakingResult = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {Object.entries(scores).map(([criterion, score]) => {
                 if (criterion === "overall") return null;
+                const scoreValue = score as number;
                 return (
                   <div key={criterion} className="text-center">
                     <div
-                      className={`text-2xl font-bold ${getScoreColor(score as number)}`}
+                      className={`text-2xl font-bold ${getScoreColor(scoreValue)}`}
                     >
-                      {score}/10
+                      {scoreValue}/10
                     </div>
                     <div className="text-sm text-gray-600 capitalize">
                       {criterion.replace(/([A-Z])/g, " $1").trim()}
@@ -447,13 +575,47 @@ const AssessmentSpeakingResult = () => {
           )}
 
           {/* Action Buttons */}
-          <div className="flex justify-center">
+          <div className="flex justify-center space-x-4">
             <button
-              onClick={() => navigate("assessment")}
-              className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg"
+              type="button"
+              onClick={handleFinalSubmission}
+              disabled={isSubmitting}
+              className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isSubmitting && (
+                <svg
+                  className="animate-spin h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  aria-label="Loading"
+                >
+                  <title>Loading spinner</title>
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+              )}
+              {isSubmitting ? "Submitting..." : "Submit Assessment"}
+            </button>
+            {/* <button
+              type="button"
+              onClick={() => navigate("/assessment")}
+              disabled={isSubmitting}
+              className="px-8 py-4 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Back to Assessment
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
