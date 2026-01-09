@@ -17,7 +17,7 @@ interface CalculatedScores {
 
 const AssessmentSpeakingResult = () => {
   const navigate = useNavigate();
-  const { assessmentSpeakingEvaluation } = useStore();
+  const { assessmentSpeakingEvaluation, assessmentProgress } = useStore();
   const [calculatedScores, setCalculatedScores] =
     useState<CalculatedScores | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -264,6 +264,9 @@ const AssessmentSpeakingResult = () => {
 
       // Call assessment submission API
       await submitAssessmentToAPI();
+
+      // Reset Zustand assessment progress state after successful submission
+      assessmentProgress.resetAssessment();
 
       toast.success("Assessment submitted successfully!");
       console.log("Assessment scores submitted successfully.");
@@ -608,14 +611,14 @@ const AssessmentSpeakingResult = () => {
               )}
               {isSubmitting ? "Submitting..." : "Submit Assessment"}
             </button>
-            {/* <button
+            <button
               type="button"
               onClick={() => navigate("/assessment")}
               disabled={isSubmitting}
               className="px-8 py-4 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Back to Assessment
-            </button> */}
+            </button>
           </div>
         </div>
       </div>

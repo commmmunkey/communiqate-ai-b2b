@@ -21,7 +21,7 @@ import readingLogo from "./readinglogo.png";
 
 const NewAssessment = () => {
   const navigate = useNavigate();
-  const { arrAssesmentQuestion, setArrAssesmentQuestion, assessmentProgress } =
+  const { arrAssesmentQuestion, setArrAssesmentQuestion, assessmentProgress, assessmentSpeakingEvaluation } =
     useStore();
 
   // Destructure assessment progress state for easier access
@@ -1035,7 +1035,56 @@ ${listeningText}`,
       let assessment_speakingScore = 0;
       let speakingAssessment = "";
 
-      if (audioBlob) {
+      // Check if speaking score was already calculated in the dedicated speaking module
+      // Priority: 1. ASSESSMENT_FINAL_SCORES, 2. Zustand store, 3. ASSESSMENT_SPEAKING_SCORE, 4. Re-evaluate
+      const storedFinalScores = localStorage.getItem("ASSESSMENT_FINAL_SCORES");
+      let existingSpeakingScore: number | null = null;
+
+      if (storedFinalScores) {
+        try {
+          const parsedScores = JSON.parse(storedFinalScores) as CalculatedScores;
+          if (parsedScores.assessment_speakingScore && parsedScores.assessment_speakingScore > 0) {
+            existingSpeakingScore = parsedScores.assessment_speakingScore;
+          }
+        } catch (error) {
+          console.error("Error parsing stored scores:", error);
+        }
+      }
+
+      // Check Zustand store if no score found in localStorage
+      if (existingSpeakingScore === null && assessmentSpeakingEvaluation?.scores?.overall) {
+        existingSpeakingScore = assessmentSpeakingEvaluation.scores.overall;
+      }
+
+      // Check ASSESSMENT_SPEAKING_SCORE localStorage as fallback
+      if (existingSpeakingScore === null) {
+        const speakingScoreStr = localStorage.getItem("ASSESSMENT_SPEAKING_SCORE");
+        if (speakingScoreStr) {
+          const parsedScore = parseFloat(speakingScoreStr);
+          if (!Number.isNaN(parsedScore) && parsedScore > 0) {
+            existingSpeakingScore = parsedScore;
+          }
+        }
+      }
+
+      // Use existing score if available, otherwise evaluate
+      if (existingSpeakingScore !== null) {
+        console.log("Using existing speaking score from dedicated module:", existingSpeakingScore);
+        assessment_speakingScore = existingSpeakingScore;
+        // Try to get assessment text from stored evaluation if available
+        const storedEvaluation = localStorage.getItem("ASSESSMENT_SPEAKING_EVALUATION");
+        if (storedEvaluation) {
+          try {
+            const evaluation = JSON.parse(storedEvaluation);
+            if (evaluation.feedback?.detailed) {
+              speakingAssessment = evaluation.feedback.detailed;
+            }
+          } catch (error) {
+            console.error("Error parsing stored evaluation:", error);
+          }
+        }
+      } else if (audioBlob) {
+        // Only evaluate if no existing score found
         try {
           // Validate audio blob
           if (audioBlob.size === 0) {
@@ -1515,16 +1564,8 @@ ${transcription.text}`,
     try {
       setIsloading(true);
 
-      // Check if assessment is already in progress (from Zustand)
-      if (assessmentProgress.isAssessmentInProgress) {
-        // Assessment is in progress - restore state and continue
-        setIsloading(false);
-        setIsPreModalOpen(false); // Don't show PreModal
-        // State is already in Zustand, component will use it
-        return;
-      }
-
-      // Fresh start - check API status
+      // Always check API status first to see if assessment was already completed
+      // This handles the case where user submitted but Zustand state wasn't reset
       const dictParameter = JSON.stringify([
         {
           loginUserID: userId,
@@ -1549,11 +1590,22 @@ ${transcription.text}`,
         .then((responseJson) => {
           // console.log("responseJson for exam submit " + JSON.stringify(responseJson));
           if (responseJson[0].status === "false") {
+            // Assessment already completed - reset Zustand state and show modal
+            assessmentProgress.resetAssessment();
             setIsloading(false);
             setIsAlreadyModalOpen(true);
           } else {
-            setIsPreModalOpen(true);
-            setIsloading(false);
+            // Assessment not completed - check if in progress
+            if (assessmentProgress.isAssessmentInProgress) {
+              // Assessment is in progress - restore state and continue
+              setIsloading(false);
+              setIsPreModalOpen(false); // Don't show PreModal
+              // State is already in Zustand, component will use it
+            } else {
+              // Fresh start - show PreModal
+              setIsPreModalOpen(true);
+              setIsloading(false);
+            }
           }
         });
     } catch {
