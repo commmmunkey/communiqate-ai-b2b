@@ -1,5 +1,12 @@
 import { useEffect, useState, useRef } from "react";
-import { XIcon, Loader2, AlertCircle, Download, Play, Pause } from "lucide-react";
+import {
+  XIcon,
+  Loader2,
+  AlertCircle,
+  Download,
+  Play,
+  Pause,
+} from "lucide-react";
 
 interface AudioPopUpProps {
   onClose: () => void;
@@ -7,7 +14,11 @@ interface AudioPopUpProps {
   onStartAnswering?: () => void;
 }
 
-const AudioPopUp = ({ onClose, audioUrl, onStartAnswering }: AudioPopUpProps) => {
+const AudioPopUp = ({
+  onClose,
+  audioUrl,
+  onStartAnswering,
+}: AudioPopUpProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -226,7 +237,7 @@ const AudioPopUp = ({ onClose, audioUrl, onStartAnswering }: AudioPopUpProps) =>
                 preload="metadata"
                 className="hidden"
               />
-              
+
               {/* Play/Pause Button */}
               <button
                 type="button"
@@ -264,7 +275,7 @@ const AudioPopUp = ({ onClose, audioUrl, onStartAnswering }: AudioPopUpProps) =>
 
         {/* Start Answering Button */}
         {onStartAnswering != null && (
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-gray-200 mx-auto">
             <button
               type="button"
               className="hover:bg-[#f5914a] bg-primary text-white font-bold py-2 px-4 rounded w-full sm:w-auto sm:self-center transition-colors"
@@ -280,4 +291,3 @@ const AudioPopUp = ({ onClose, audioUrl, onStartAnswering }: AudioPopUpProps) =>
 };
 
 export default AudioPopUp;
-

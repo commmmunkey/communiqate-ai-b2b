@@ -37,24 +37,24 @@ const WritingModule = () => {
   const userId = Number(localStorage.getItem("USER_ID") || 0);
 
   useEffect(() => {
-    const primaryColor =
-      localStorage.getItem("corporate_primary_color") || "#0000ff";
-    const secondaryColor =
-      localStorage.getItem("corporate_secondary_color") || "#f5914a";
-    const backgroundColor =
-      localStorage.getItem("corporate_background_color") || "#fddaa7";
-    const accentColor =
-      localStorage.getItem("corporate_accent_color") || "#e0d4bc";
-    document.documentElement.style.setProperty("--primary-color", primaryColor);
-    document.documentElement.style.setProperty(
-      "--secondary-color",
-      secondaryColor
-    );
-    document.documentElement.style.setProperty(
-      "--background-color",
-      backgroundColor
-    );
-    document.documentElement.style.setProperty("--accent-color", accentColor);
+    // const primaryColor =
+    //   localStorage.getItem("corporate_primary_color") || "#0000ff";
+    // const secondaryColor =
+    //   localStorage.getItem("corporate_secondary_color") || "#f5914a";
+    // const backgroundColor =
+    //   localStorage.getItem("corporate_background_color") || "#fddaa7";
+    // const accentColor =
+    //   localStorage.getItem("corporate_accent_color") || "#e0d4bc";
+    // document.documentElement.style.setProperty("--primary-color", primaryColor);
+    // document.documentElement.style.setProperty(
+    //   "--secondary-color",
+    //   secondaryColor
+    // );
+    // document.documentElement.style.setProperty(
+    //   "--background-color",
+    //   backgroundColor
+    // );
+    // document.documentElement.style.setProperty("--accent-color", accentColor);
     initializeModule();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -155,7 +155,7 @@ const WritingModule = () => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${String(minutes).padStart(2, "0")}:${String(
-      remainingSeconds
+      remainingSeconds,
     ).padStart(2, "0")}`;
   };
 
@@ -197,7 +197,7 @@ const WritingModule = () => {
       }, 2000);
       const evaluation = await openAIEvaluationService.evaluateWriting(
         currentQuestion.prompt,
-        userResponse
+        userResponse,
       );
       window.clearInterval(progressInterval);
       setWritingEvaluation((prev) => ({
@@ -461,13 +461,13 @@ const WritingModule = () => {
                         wordCount < currentQuestion.minWords
                           ? "bg-red-500"
                           : wordCount > currentQuestion.maxWords
-                          ? "bg-orange-500"
-                          : "bg-green-500"
+                            ? "bg-orange-500"
+                            : "bg-green-500"
                       }`}
                       style={{
                         width: `${Math.min(
                           (wordCount / currentQuestion.maxWords) * 100,
-                          100
+                          100,
                         )}%`,
                       }}
                     ></div>
@@ -484,7 +484,7 @@ const WritingModule = () => {
                       }`}
                     >
                       {formatTime(
-                        Math.max(0, currentQuestion.timeLimit - timeSpent)
+                        Math.max(0, currentQuestion.timeLimit - timeSpent),
                       )}
                     </span>
                   </div>
@@ -498,7 +498,7 @@ const WritingModule = () => {
                       style={{
                         width: `${Math.min(
                           (timeSpent / currentQuestion.timeLimit) * 100,
-                          100
+                          100,
                         )}%`,
                       }}
                     ></div>

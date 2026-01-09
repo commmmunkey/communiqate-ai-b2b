@@ -168,10 +168,10 @@ const PdfPopUp = ({ onClose, pdfUrl, onStartAnswering }: PdfPopUpProps) => {
 
         {/* Start Answering Button */}
         {onStartAnswering != null && (
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-gray-200 mx-auto">
             <button
               type="button"
-              className="hover:bg-[#f5914a] bg-primary text-white font-bold py-2 px-4 rounded w-full sm:w-auto sm:self-center transition-colors"
+              className=" cursor-pointer hover:bg-[#f5914a] bg-primary text-white font-bold py-2 px-4 rounded w-full sm:w-auto sm:self-center transition-colors"
               onClick={onStartAnswering}
             >
               Start Answering

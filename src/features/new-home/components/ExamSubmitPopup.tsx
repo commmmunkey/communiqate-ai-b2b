@@ -1,7 +1,14 @@
-import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useStore } from "@/store";
 import { API_BASE_URL } from "@/lib/constants";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface ExamSummary {
   totalQuestions: number;
@@ -45,36 +52,14 @@ const ExamSubmitPopup = ({
     moduleIds: moduleIDsStateVal,
   } = useStore();
 
-  useEffect(() => {
-    const primaryColor =
-      localStorage.getItem("corporate_primary_color") || "#0000ff";
-    const secondaryColor =
-      localStorage.getItem("corporate_secondary_color") || "#f5914a";
-    const backgroundColor =
-      localStorage.getItem("corporate_background_color") || "#fddaa7";
-    const accentColor =
-      localStorage.getItem("corporate_accent_color") || "#e0d4bc";
-
-    document.documentElement.style.setProperty("--primary-color", primaryColor);
-    document.documentElement.style.setProperty(
-      "--secondary-color",
-      secondaryColor
-    );
-    document.documentElement.style.setProperty(
-      "--background-color",
-      backgroundColor
-    );
-    document.documentElement.style.setProperty("--accent-color", accentColor);
-  }, []);
-
   const userId = localStorage.getItem("USER_ID");
   const isReadingSubmittedExam = localStorage.getItem("isReadingSubmittedExam");
   const isWrittngSubmittedExam = localStorage.getItem("isWrittngSubmittedExam");
   const isSpeakingSubmittedExam = localStorage.getItem(
-    "isSpeakingSubmittedExam"
+    "isSpeakingSubmittedExam",
   );
   const isListeningSubmittedExam = localStorage.getItem(
-    "isListeningSubmittedExam"
+    "isListeningSubmittedExam",
   );
 
   const uploadImageToServer = () => {
@@ -91,7 +76,7 @@ const ExamSubmitPopup = ({
         "json",
         JSON.stringify([
           { loginuserID: userId, apiType: "Android", apiVersion: "1.0" },
-        ])
+        ]),
       );
 
       const url = `${API_BASE_URL}users/file-upload`;
@@ -128,26 +113,26 @@ const ExamSubmitPopup = ({
             isReadingSubmittedExam === "Yes"
               ? "Yes"
               : moduleId == 6 || moduleId == 8
-              ? "Yes"
-              : "No",
+                ? "Yes"
+                : "No",
           userexamListeningSubmitted:
             isListeningSubmittedExam === "Yes"
               ? "Yes"
               : moduleId == 10 || moduleId == 11
-              ? "Yes"
-              : "No",
+                ? "Yes"
+                : "No",
           userexamWritingSubmitted:
             isWrittngSubmittedExam === "Yes"
               ? "Yes"
               : moduleId == 7 || moduleId == 9
-              ? "Yes"
-              : "No",
+                ? "Yes"
+                : "No",
           userexamSpeakingSubmitted:
             isSpeakingSubmittedExam === "Yes"
               ? "Yes"
               : moduleId == 12 || moduleId == 13
-              ? "Yes"
-              : "No",
+                ? "Yes"
+                : "No",
           userexamReadingTimer: 0,
           userexamListeningTimer: 0,
           userexamWritingTimer: 0,
@@ -240,59 +225,67 @@ const ExamSubmitPopup = ({
   };
 
   return (
-    <div className="fixed top-0 left-0 w-full h-full flex justify-center items-center bg-gray-800 bg-opacity-50 z-50">
-      <div className="bg-white rounded-xl p-8 max-w-2xl border-4 border-primary relative">
-        <button
-          className="absolute -mt-6 -mr-4 rounded-full bg-white p-2"
-          onClick={onClose}
-        >
-          X
-        </button>
-        <div className="font-bold text-black mb-4">Exam Summary</div>
-        <div className="flex justify-between mb-4">
-          <div>Total Questions</div>
-          <div className="text-primary">{examSummary.totalQuestions}</div>
-        </div>
-        <div className="w-full h-1 bg-gray-300 mb-4"></div>
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent
+        className="sm:max-w-2xl"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold">Exam Summary</DialogTitle>
+        </DialogHeader>
 
-        <div className="flex justify-between mb-4">
-          <div>Not Answered Questions</div>
-          <div className="text-primary">
-            {examSummary.notAnsweredQuestions + examSummary.notVisitedQuestions}
+        <div className="space-y-4 my-2">
+          <div className="flex justify-between items-center">
+            <div className="text-base">Total Questions</div>
+            <div className="text-primary font-semibold">
+              {examSummary.totalQuestions}
+            </div>
+          </div>
+          <div className="w-full h-px bg-gray-300"></div>
+
+          <div className="flex justify-between items-center">
+            <div className="text-base">Not Answered Questions</div>
+            <div className="text-primary font-semibold">
+              {examSummary.notAnsweredQuestions +
+                examSummary.notVisitedQuestions}
+            </div>
+          </div>
+          <div className="w-full h-px bg-gray-300"></div>
+
+          <div className="flex justify-between items-center">
+            <div className="text-base">Mark For Review Questions</div>
+            <div className="text-primary font-semibold">
+              {examSummary.markForReviewQuestions}
+            </div>
+          </div>
+          <div className="w-full h-px bg-gray-300"></div>
+
+          <div className="flex justify-between items-center">
+            <div className="text-base">Total Answered Questions</div>
+            <div className="text-primary font-semibold">
+              {examSummary.totalAnsweredQuestions}
+            </div>
           </div>
         </div>
-        <div className="w-full h-1 bg-gray-300 mb-4"></div>
 
-        <div className="flex justify-between mb-4">
-          <div>Mark For Review Questions</div>
-          <div className="text-primary">
-            {examSummary.markForReviewQuestions}
-          </div>
-        </div>
-        <div className="w-full h-1 bg-gray-300 mb-4"></div>
-
-        <div className="flex justify-between mb-4">
-          <div>Total Answered Questions</div>
-          <div className="text-primary">
-            {examSummary.totalAnsweredQuestions}
-          </div>
+        <div className="space-y-2">
+          <p className="font-medium text-foreground text-base">
+            Would you like to submit the test?
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Please make sure you have answered all questions before submitting.
+          </p>
         </div>
 
-        <div className="text-black mb-2">
-          Would you like to submit the test?
-        </div>
-        <div className="text-sm text-gray-600 mb-2 -mt-2">
-          Please make sure you have answered all questions before submitting.
-        </div>
-
-        <button
-          onClick={uploadImageToServer}
-          className="bg-primary text-white px-4 py-2 rounded-lg w-full"
-        >
-          Submit
-        </button>
-      </div>
-    </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={uploadImageToServer}>Submit</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
