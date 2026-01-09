@@ -209,7 +209,7 @@ const ExamSubmitPopup = ({
           if (examID == 0) {
             loading(false);
             onClose();
-            navigate("/NewHome");
+            navigate("/");
           } else {
             setExamTimeApi();
           }
@@ -290,3 +290,4 @@ const ExamSubmitPopup = ({
 };
 
 export default ExamSubmitPopup;
+

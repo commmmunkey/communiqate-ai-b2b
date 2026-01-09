@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import AudioPlayer from "react-h5-audio-player";
+import "react-h5-audio-player/lib/styles.css";
 
 interface Question {
   queQuestion: string;
@@ -69,8 +71,6 @@ const ViewResult = () => {
   };
 
   const currentQuestionData = questions[currentQuestion - 1];
-  const audioBaseUrl =
-    "https://stage.englishmonkapp.com/englishmonk-staging//backend/web/uploads/users/";
 
   return (
     <div className="flex flex-col items-center justify-center h-screen p-3 max-w-screen-md mx-auto">
@@ -150,13 +150,14 @@ const ViewResult = () => {
                     <strong>Expert's Feedback:</strong>{" "}
                     {currentQuestionData.answerNotes}
                   </div>
-                  <audio controls className="m-2">
-                    <source
-                      src={audioBaseUrl + currentQuestionData.answerAnswer}
-                      type="audio/mpeg"
-                    />
-                    Your browser does not support the audio element.
-                  </audio>
+                  <AudioPlayer
+                    src={
+                      "https://stage.englishmonkapp.com/englishmonk-staging//backend/web/uploads/users/" +
+                      currentQuestionData.answerAnswer
+                    }
+                    onPlay={() => console.log("onPlay")}
+                    className="m-2"
+                  />
                 </div>
               )
             ) : currentQuestionData.answerIsVerified === "Pending" ? (

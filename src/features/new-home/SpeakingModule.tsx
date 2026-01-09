@@ -35,7 +35,7 @@ const SpeakingModule = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
-    null
+    null,
   );
   const timerRef = useRef<number | null>(null);
   const recordingTimerRef = useRef<number | null>(null);
@@ -53,11 +53,11 @@ const SpeakingModule = () => {
     document.documentElement.style.setProperty("--primary-color", primaryColor);
     document.documentElement.style.setProperty(
       "--secondary-color",
-      secondaryColor
+      secondaryColor,
     );
     document.documentElement.style.setProperty(
       "--background-color",
-      backgroundColor
+      backgroundColor,
     );
     document.documentElement.style.setProperty("--accent-color", accentColor);
     initializeModule();
@@ -144,7 +144,7 @@ const SpeakingModule = () => {
     } catch (err) {
       console.error("Error initializing speaking module:", err);
       setError(
-        "Microphone access is required for the speaking module. Please allow microphone permissions and try again."
+        "Microphone access is required for the speaking module. Please allow microphone permissions and try again.",
       );
       setIsLoading(false);
     }
@@ -201,7 +201,7 @@ const SpeakingModule = () => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${String(minutes).padStart(2, "0")}:${String(
-      remainingSeconds
+      remainingSeconds,
     ).padStart(2, "0")}`;
   };
 
@@ -237,20 +237,25 @@ const SpeakingModule = () => {
           progress: Math.min(prev.progress + 8, 90),
         }));
       }, 2000);
-      const transcribedText = await openAIEvaluationService.transcribeAudio(
-        audioBlob
-      );
-      setTranscription(transcribedText);
-      setEvaluationLoading((prev) => ({
-        ...prev,
-        message: "Evaluating your speaking...",
-        progress: 50,
-      }));
-      const evaluation = await openAIEvaluationService.evaluateSpeaking(
-        currentQuestion.prompt,
-        transcribedText
-      );
-      window.clearInterval(progressInterval);
+
+      let transcribedText;
+      let evaluation;
+      try {
+        transcribedText =
+          await openAIEvaluationService.transcribeAudio(audioBlob);
+        setTranscription(transcribedText);
+        setEvaluationLoading((prev) => ({
+          ...prev,
+          message: "Evaluating your speaking...",
+          progress: 50,
+        }));
+        evaluation = await openAIEvaluationService.evaluateSpeaking(
+          currentQuestion.prompt,
+          transcribedText,
+        );
+      } finally {
+        window.clearInterval(progressInterval);
+      }
       setSpeakingEvaluation((prev) => ({
         ...prev,
         scores: evaluation.scores,
@@ -639,13 +644,13 @@ const SpeakingModule = () => {
                         recordingTime < currentQuestion.minTime
                           ? "bg-red-500"
                           : recordingTime > currentQuestion.maxTime
-                          ? "bg-orange-500"
-                          : "bg-green-500"
+                            ? "bg-orange-500"
+                            : "bg-green-500"
                       }`}
                       style={{
                         width: `${Math.min(
                           (recordingTime / currentQuestion.maxTime) * 100,
-                          100
+                          100,
                         )}%`,
                       }}
                     ></div>
@@ -666,8 +671,8 @@ const SpeakingModule = () => {
                         Math.max(
                           0,
                           (currentQuestion.timeLimit || 0) -
-                            (speakingModule.timeSpent || 0)
-                        )
+                            (speakingModule.timeSpent || 0),
+                        ),
                       )}
                     </span>
                   </div>
@@ -684,7 +689,7 @@ const SpeakingModule = () => {
                           ((speakingModule.timeSpent || 0) /
                             (currentQuestion.timeLimit || 1)) *
                             100,
-                          100
+                          100,
                         )}%`,
                       }}
                     ></div>
@@ -700,3 +705,4 @@ const SpeakingModule = () => {
 };
 
 export default SpeakingModule;
+

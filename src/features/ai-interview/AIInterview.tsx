@@ -343,9 +343,13 @@ const SpeechToText = () => {
         return;
       }
 
-      // Get AI response
+      // Get AI response - use interview-specific model if set, otherwise fall back to general model or gpt-4o
+      const model =
+        import.meta.env.VITE_OPENAI_MODEL_INTERVIEW ||
+        import.meta.env.VITE_OPENAI_MODEL ||
+        "gpt-4o";
       const completion = await openaiRef.current.chat.completions.create({
-        model: "gpt-4o",
+        model: model,
         messages: updatedHistory,
         max_tokens: 150,
         temperature: 0.7,
@@ -1437,9 +1441,13 @@ const SpeechToText = () => {
       // Get complete conversation history
       const updatedHistory = [...conversationHistory, assessmentPrompt];
 
-      // Generate assessment
+      // Generate assessment - use interview-specific model if set, otherwise fall back to general model or gpt-4o
+      const model =
+        import.meta.env.VITE_OPENAI_MODEL_INTERVIEW ||
+        import.meta.env.VITE_OPENAI_MODEL ||
+        "gpt-4o";
       const completion = await openaiRef.current.chat.completions.create({
-        model: "gpt-4o",
+        model: model,
         messages: updatedHistory,
         max_tokens: 500,
         temperature: 0.7,
@@ -2909,9 +2917,16 @@ const useInitializeOpenAI = ({
     // Verify assessment scores are stored
     verifyAssessmentScores();
 
-    // Initialize OpenAI
+    // Initialize OpenAI with validation
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    if (!apiKey || apiKey.trim() === "") {
+      throw new Error(
+        "OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY environment variable.",
+      );
+    }
+
     openaiRef.current = new OpenAI({
-      apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+      apiKey: apiKey,
       dangerouslyAllowBrowser: true,
     });
 

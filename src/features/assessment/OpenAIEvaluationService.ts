@@ -24,12 +24,16 @@ class OpenAIEvaluationService {
   private client: OpenAI;
   private writingPrompt: string;
   private speakingPrompt: string;
+  private model: string;
 
   constructor() {
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
     if (!apiKey || apiKey.trim() === "") {
       throw new Error("OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY environment variable.");
     }
+
+    // Get model from environment, default to gpt-4 if not set
+    this.model = import.meta.env.VITE_OPENAI_MODEL || "gpt-4";
     
     this.client = new OpenAI({
       apiKey: apiKey,
@@ -100,7 +104,7 @@ TRANSCRIPTION: {transcription}`;
         .replace("{response}", response);
 
       const completion = await this.client.chat.completions.create({
-        model: "gpt-4",
+        model: this.model,
         messages: [
           {
             role: "system",
@@ -146,7 +150,7 @@ TRANSCRIPTION: {transcription}`;
         .replace("{transcription}", transcription);
 
       const completion = await this.client.chat.completions.create({
-        model: "gpt-4",
+        model: this.model,
         messages: [
           {
             role: "system",

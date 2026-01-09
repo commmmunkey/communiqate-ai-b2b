@@ -746,6 +746,9 @@ const NewAssessment = () => {
         return;
       }
 
+      // Get model from environment, default to gpt-4 if not set
+      const model = import.meta.env.VITE_OPENAI_MODEL || "gpt-4";
+
       const openai = new OpenAI({
         apiKey: apiKey,
         dangerouslyAllowBrowser: true,
@@ -784,7 +787,7 @@ ${writingText}`,
 
       try {
         const writingCompletion = await openai.chat.completions.create({
-          model: "gpt-4",
+          model: model,
           messages: [writingAssessmentPrompt],
           max_tokens: 500,
           temperature: 0.7,
@@ -852,7 +855,7 @@ ${generalText}`,
 
       try {
         const generalCompletion = await openai.chat.completions.create({
-          model: "gpt-4",
+          model: model,
           messages: [generalAssessmentPrompt],
           max_tokens: 500,
           temperature: 0.7,
@@ -920,7 +923,7 @@ ${readingText}`,
 
       try {
         const readingCompletion = await openai.chat.completions.create({
-          model: "gpt-4",
+          model: model,
           messages: [readingAssessmentPrompt],
           max_tokens: 500,
           temperature: 0.7,
@@ -988,7 +991,7 @@ ${listeningText}`,
 
       try {
         const listeningCompletion = await openai.chat.completions.create({
-          model: "gpt-4",
+          model: model,
           messages: [listeningAssessmentPrompt],
           max_tokens: 500,
           temperature: 0.7,
@@ -1068,7 +1071,7 @@ ${transcription.text}`,
           };
 
           const speakingCompletion = await openai.chat.completions.create({
-            model: "gpt-4",
+            model: model,
             messages: [speakingAssessmentPrompt],
             max_tokens: 500,
             temperature: 0.7,

@@ -195,11 +195,16 @@ const WritingModule = () => {
           progress: Math.min(prev.progress + 10, 90),
         }));
       }, 2000);
-      const evaluation = await openAIEvaluationService.evaluateWriting(
-        currentQuestion.prompt,
-        userResponse,
-      );
-      window.clearInterval(progressInterval);
+
+      let evaluation;
+      try {
+        evaluation = await openAIEvaluationService.evaluateWriting(
+          currentQuestion.prompt,
+          userResponse,
+        );
+      } finally {
+        window.clearInterval(progressInterval);
+      }
       setWritingEvaluation((prev) => ({
         ...prev,
         scores: evaluation.scores,
@@ -514,3 +519,4 @@ const WritingModule = () => {
 };
 
 export default WritingModule;
+

@@ -184,3 +184,4 @@ const PdfPopUp = ({ onClose, pdfUrl, onStartAnswering }: PdfPopUpProps) => {
 };
 
 export default PdfPopUp;
+

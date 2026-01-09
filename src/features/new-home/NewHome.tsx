@@ -244,3 +244,4 @@ const NewHome = () => {
 };
 
 export default NewHome;
+

@@ -29,10 +29,12 @@ const AssessmentSpeakingResult = lazy(
 const NewHome = lazy(() => import("./pages/NewHome"));
 const LUTest = lazy(() => import("./pages/LUTest"));
 const LUResult = lazy(() => import("./pages/LUResult"));
+const ViewResult = lazy(() => import("./pages/ViewResult"));
 const WritingModule = lazy(() => import("./pages/WritingModule"));
 const SpeakingModule = lazy(() => import("./pages/SpeakingModule"));
 const WritingResult = lazy(() => import("./pages/WritingResult"));
 const SpeakingResult = lazy(() => import("./pages/SpeakingResult"));
+const ExamList = lazy(() => import("./pages/ExamList"));
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem("TOKEN_ID"));
@@ -96,10 +98,12 @@ function App() {
             />
             <Route path="/LUTest" element={<LUTest />} />
             <Route path="/LUResult" element={<LUResult />} />
+            <Route path="/viewResult" element={<ViewResult />} />
             <Route path="/WritingModule" element={<WritingModule />} />
             <Route path="/SpeakingModule" element={<SpeakingModule />} />
             <Route path="/WritingResult" element={<WritingResult />} />
             <Route path="/SpeakingResult" element={<SpeakingResult />} />
+            <Route path="/examList" element={<ExamList />} />
           </Route>
 
           {/* Catch-all */}
