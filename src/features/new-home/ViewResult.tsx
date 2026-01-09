@@ -37,11 +37,11 @@ const ViewResult = () => {
     document.documentElement.style.setProperty("--primary-color", primaryColor);
     document.documentElement.style.setProperty(
       "--secondary-color",
-      secondaryColor
+      secondaryColor,
     );
     document.documentElement.style.setProperty(
       "--background-color",
-      backgroundColor
+      backgroundColor,
     );
     document.documentElement.style.setProperty("--accent-color", accentColor);
   }, []);
@@ -52,7 +52,7 @@ const ViewResult = () => {
       const parsedQuestions = JSON.parse(storedQuestions) as Question[];
       setQuestions(parsedQuestions);
       const bgColors = parsedQuestions.map((question) =>
-        question.answerIsCorrect === "Yes" ? "bg-green-500" : "bg-red-500"
+        question.answerIsCorrect === "Yes" ? "bg-green-500" : "bg-red-500",
       );
       setQuestionBgColors(bgColors);
     }
@@ -67,7 +67,7 @@ const ViewResult = () => {
   };
 
   const handleBacktoSummaryClick = () => {
-    navigate("/LUResult");
+    navigate("/result");
   };
 
   const currentQuestionData = questions[currentQuestion - 1];

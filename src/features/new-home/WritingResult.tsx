@@ -19,11 +19,11 @@ const WritingResult = () => {
     document.documentElement.style.setProperty("--primary-color", primaryColor);
     document.documentElement.style.setProperty(
       "--secondary-color",
-      secondaryColor
+      secondaryColor,
     );
     document.documentElement.style.setProperty(
       "--background-color",
-      backgroundColor
+      backgroundColor,
     );
     document.documentElement.style.setProperty("--accent-color", accentColor);
 
@@ -98,7 +98,7 @@ const WritingResult = () => {
             </div>
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate("/WritingModule")}
+                onClick={() => navigate("/writing")}
                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
               >
                 Try Again
@@ -134,8 +134,8 @@ const WritingResult = () => {
                         scores.overall >= 8
                           ? "#10b981"
                           : scores.overall >= 6
-                          ? "#f59e0b"
-                          : "#ef4444"
+                            ? "#f59e0b"
+                            : "#ef4444"
                       }
                       strokeWidth="8"
                       strokeDasharray={`${(scores.overall / 10) * 314} 314`}
@@ -147,14 +147,14 @@ const WritingResult = () => {
                     <div className="text-center">
                       <div
                         className={`text-3xl font-bold ${getScoreColor(
-                          scores.overall
+                          scores.overall,
                         )}`}
                       >
                         {Number(scores.overall).toFixed(1)}
                       </div>
                       <div
                         className={`text-sm font-medium ${getScoreColor(
-                          scores.overall
+                          scores.overall,
                         )}`}
                       >
                         {getOverallGrade(scores.overall)}
@@ -180,7 +180,7 @@ const WritingResult = () => {
                       </span>
                       <span
                         className={`text-sm font-semibold ${getScoreColor(
-                          Number(val)
+                          Number(val),
                         )}`}
                       >
                         {Number(val).toFixed(1)}/10
@@ -189,7 +189,7 @@ const WritingResult = () => {
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
                         className={`h-2 rounded-full ${getScoreColor(
-                          Number(val)
+                          Number(val),
                         ).replace("text-", "bg-")}`}
                         style={{ width: `${(Number(val) / 10) * 100}%` }}
                       ></div>
@@ -257,7 +257,7 @@ const WritingResult = () => {
               <div className="bg-white rounded-lg shadow-sm border p-6">
                 <div className="flex flex-col sm:flex-row gap-4">
                   <button
-                    onClick={() => navigate("/WritingModule")}
+                    onClick={() => navigate("/writing")}
                     className="flex-1 px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     Practice Again
@@ -279,4 +279,3 @@ const WritingResult = () => {
 };
 
 export default WritingResult;
-

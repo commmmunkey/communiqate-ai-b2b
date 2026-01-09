@@ -153,7 +153,7 @@ const HomeListView = ({
   const closePopup = () => setIsLessonVideoWatch(false);
   const closePdf = () => setIsLessonPDFWatch(false);
   const closeAudio = () => setIsLessonAudioWatch(false);
-  const startAnswering = () => navigate("/LUTest");
+  const startAnswering = () => navigate("/test");
 
   // Helper function to check if file is an audio file
   const isAudioFile = (url: string | null): boolean => {
@@ -216,7 +216,7 @@ const HomeListView = ({
       if (status_ !== "false") {
         const nextFileUrl = arrData[0]?.questions?.[0]?.queFile ?? null;
         if (nextFileUrl == null) {
-          navigate("/LUTest");
+          navigate("/test");
         } else if (isAudioFile(nextFileUrl)) {
           setAudioUrl(nextFileUrl);
           setIsLessonAudioWatch(true);
@@ -286,7 +286,7 @@ const HomeListView = ({
         },
       }));
       setModuleId(Number(moduleID));
-      navigate("/WritingModule");
+      navigate("/writing");
     } catch (error) {
       console.error("Error setting up writing module:", error);
     }
@@ -372,7 +372,7 @@ const HomeListView = ({
             lesson.userlessonReadingcorrectqus,
           );
           localStorage.setItem("LUResultModuleId", moduleID);
-          navigate("/LUResult");
+          navigate("/result");
         } else if (
           moduleID === moduleIDs[2] &&
           Number(lesson.userlessonListeningcorrectqus) !== 0
@@ -387,7 +387,7 @@ const HomeListView = ({
             lesson.userlessonListeningcorrectqus,
           );
           localStorage.setItem("LUResultModuleId", moduleID);
-          navigate("/LUResult");
+          navigate("/result");
         } else {
           await getQuestionsApi(moduleID);
         }

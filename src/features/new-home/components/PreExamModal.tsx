@@ -222,13 +222,13 @@ const PreExamModal = ({ onClose, exam }: PreExamModalProps) => {
       setIsLessonPDFWatch(true);
     } else if (moduleName === "Writing") {
       setArrQuestions(exam.modules[0] || []);
-      navigate("/LUTest");
+      navigate("/test");
     } else if (moduleName === "Listening") {
       setArrQuestions(exam.modules[3] || []);
-      navigate("/LUTest");
+      navigate("/test");
     } else {
       setArrQuestions(exam.modules[1] || []);
-      navigate("/LUTest");
+      navigate("/test");
     }
   };
 
@@ -246,7 +246,7 @@ const PreExamModal = ({ onClose, exam }: PreExamModalProps) => {
   };
 
   const startAnswering = () => {
-    navigate("/LUTest");
+    navigate("/test");
   };
 
   const handleTryAgain = () => {

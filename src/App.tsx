@@ -96,10 +96,10 @@ function App() {
               path="/assessment/speaking-result"
               element={<AssessmentSpeakingResult />}
             />
-            <Route path="/LUTest" element={<LUTest />} />
-            <Route path="/LUResult" element={<LUResult />} />
-            <Route path="/viewResult" element={<ViewResult />} />
-            <Route path="/WritingModule" element={<WritingModule />} />
+            <Route path="/test" element={<LUTest />} />
+            <Route path="/result" element={<LUResult />} />
+            <Route path="/answers" element={<ViewResult />} />
+            <Route path="/writing" element={<WritingModule />} />
             <Route path="/SpeakingModule" element={<SpeakingModule />} />
             <Route path="/WritingResult" element={<WritingResult />} />
             <Route path="/SpeakingResult" element={<SpeakingResult />} />

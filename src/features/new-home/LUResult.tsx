@@ -19,11 +19,11 @@ const LUResult = () => {
     document.documentElement.style.setProperty("--primary-color", primaryColor);
     document.documentElement.style.setProperty(
       "--secondary-color",
-      secondaryColor
+      secondaryColor,
     );
     document.documentElement.style.setProperty(
       "--background-color",
-      backgroundColor
+      backgroundColor,
     );
     document.documentElement.style.setProperty("--accent-color", accentColor);
   }, []);
@@ -31,11 +31,11 @@ const LUResult = () => {
   const LUResultMarks = localStorage.getItem("LUResultMarks");
   const LUResultTotalQuestion = localStorage.getItem("LUResultTotalQuestion");
   const LUResultCorrectQuestion = localStorage.getItem(
-    "LUResultCorrectQuestion"
+    "LUResultCorrectQuestion",
   );
 
   const onClickViewResult = () => {
-    navigate("/viewResult");
+    navigate("/answers");
   };
 
   return (
@@ -89,4 +89,3 @@ const LUResult = () => {
 };
 
 export default LUResult;
-
