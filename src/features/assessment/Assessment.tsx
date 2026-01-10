@@ -21,8 +21,26 @@ import readingLogo from "./readinglogo.png";
 
 const NewAssessment = () => {
   const navigate = useNavigate();
-  const { arrAssesmentQuestion, setArrAssesmentQuestion, assessmentProgress, assessmentSpeakingEvaluation } =
-    useStore();
+  const { 
+    arrAssesmentQuestion, 
+    setArrAssesmentQuestion, 
+    assessmentProgress,
+    assessmentSpeakingEvaluation,
+    setCurrentSection,
+    setCurrentQuestionIndex,
+    setAnswers,
+    updateAnswer,
+    setSelectedOptions,
+    updateSelectedOption,
+    setArrAnswers,
+    addAnswer,
+    setArrGeneralAnswers,
+    addGeneralAnswer,
+    setArrGeneralQuestions,
+    setTimeRemaining,
+    startAssessment,
+    resetAssessment
+  } = useStore();
 
   // Destructure assessment progress state for easier access
   const {
@@ -119,7 +137,7 @@ const NewAssessment = () => {
     }
 
     timerRef.current = setInterval(() => {
-      assessmentProgress.setTimeRemaining((prevTime) => {
+      setTimeRemaining((prevTime) => {
         if (prevTime <= 0) {
           if (timerRef.current) {
             clearInterval(timerRef.current);
@@ -137,7 +155,7 @@ const NewAssessment = () => {
         timerRef.current = null;
       }
     };
-  }, [assessmentProgress.setTimeRemaining]);
+  }, [setTimeRemaining]);
 
   useEffect(() => {
     // Set theme colors
@@ -244,8 +262,8 @@ const NewAssessment = () => {
       //   return;
       // }
 
-      assessmentProgress.setCurrentSection(section);
-      assessmentProgress.setCurrentQuestionIndex(0);
+      setCurrentSection(section);
+      setCurrentQuestionIndex(0);
     }
   };
 
@@ -257,7 +275,7 @@ const NewAssessment = () => {
 
     const currentSectionQuestions = sections[currentSection];
     if (currentQuestionIndex < currentSectionQuestions.length - 1) {
-      assessmentProgress.setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
       // console.log(`=== COMPLETING ${currentSection.toUpperCase()} MODULE ===`);
 
@@ -268,8 +286,8 @@ const NewAssessment = () => {
           arrGeneralAnswers,
         );
         // console.log("General module completed. Moving to reading module.");
-        assessmentProgress.setCurrentSection("reading");
-        assessmentProgress.setCurrentQuestionIndex(0);
+        setCurrentSection("reading");
+        setCurrentQuestionIndex(0);
       } else if (currentSection === "reading") {
         const readingQuestions = arrAssesmentQuestion.filter(
           (q: Question) => q.moduleID === 8,
@@ -282,8 +300,8 @@ const NewAssessment = () => {
         });
         await calculateModuleScore("reading", readingQuestions, readingAnswers);
         // console.log("Reading module completed. Moving to listening module.");
-        assessmentProgress.setCurrentSection("listening");
-        assessmentProgress.setCurrentQuestionIndex(0);
+        setCurrentSection("listening");
+        setCurrentQuestionIndex(0);
       } else if (currentSection === "listening") {
         const listeningQuestions = arrAssesmentQuestion.filter(
           (q: Question) => q.moduleID === 11,
@@ -300,33 +318,33 @@ const NewAssessment = () => {
           listeningAnswers,
         );
         // console.log("Listening module completed. Moving to writing module.");
-        assessmentProgress.setCurrentSection("writing");
-        assessmentProgress.setCurrentQuestionIndex(0);
+        setCurrentSection("writing");
+        setCurrentQuestionIndex(0);
       } else if (currentSection === "writing") {
-        assessmentProgress.setCurrentSection("speaking");
-        assessmentProgress.setCurrentQuestionIndex(0);
+        setCurrentSection("speaking");
+        setCurrentQuestionIndex(0);
       }
     }
   };
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
-      assessmentProgress.setCurrentQuestionIndex(currentQuestionIndex - 1);
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
     } else {
       if (currentSection === "reading") {
-        assessmentProgress.setCurrentSection("general");
-        assessmentProgress.setCurrentQuestionIndex(sections.general.length - 1);
+        setCurrentSection("general");
+        setCurrentQuestionIndex(sections.general.length - 1);
       } else if (currentSection === "listening") {
-        assessmentProgress.setCurrentSection("reading");
-        assessmentProgress.setCurrentQuestionIndex(sections.reading.length - 1);
+        setCurrentSection("reading");
+        setCurrentQuestionIndex(sections.reading.length - 1);
       } else if (currentSection === "writing") {
-        assessmentProgress.setCurrentSection("listening");
-        assessmentProgress.setCurrentQuestionIndex(
+        setCurrentSection("listening");
+        setCurrentQuestionIndex(
           sections.listening.length - 1,
         );
       } else if (currentSection === "speaking") {
-        assessmentProgress.setCurrentSection("writing");
-        assessmentProgress.setCurrentQuestionIndex(sections.writing.length - 1);
+        setCurrentSection("writing");
+        setCurrentQuestionIndex(sections.writing.length - 1);
       }
     }
   };
@@ -1222,7 +1240,7 @@ ${transcription.text}`,
           return answer;
         });
 
-        assessmentProgress.setArrAnswers(updatedAnswers);
+        setArrAnswers(updatedAnswers);
 
         // Upload to server (non-blocking - don't fail if this fails)
         uploadImageToServer().catch((error) => {
@@ -1591,7 +1609,7 @@ ${transcription.text}`,
           // console.log("responseJson for exam submit " + JSON.stringify(responseJson));
           if (responseJson[0].status === "false") {
             // Assessment already completed - reset Zustand state and show modal
-            assessmentProgress.resetAssessment();
+            resetAssessment();
             setIsloading(false);
             setIsAlreadyModalOpen(true);
           } else {
@@ -1702,7 +1720,7 @@ ${transcription.text}`,
         .then(() => {
           // console.log("responseJson for exam submit " + JSON.stringify(responseJson));
           // Clear assessment progress after successful submission
-          assessmentProgress.resetAssessment();
+          resetAssessment();
           setIsModalOpen(true);
           setIsloading(false);
         })
@@ -1724,7 +1742,7 @@ ${transcription.text}`,
       setRecording(false);
       setIsRecording(false);
       mediaRecorder.stream.getTracks().forEach((track) => track.stop());
-      assessmentProgress.updateSelectedOption(firstQuestionWithAudioID, 0);
+      updateSelectedOption(firstQuestionWithAudioID, 0);
 
       // const currentQue = arrAssesmentQuestion.find((que: Question) => que.queID === firstQuestionWithAudioID);
       const updatedAnswers = { ...answers };
@@ -1734,7 +1752,7 @@ ${transcription.text}`,
           answers[firstQuestionWithAudioID];
       }
 
-      assessmentProgress.setAnswers(updatedAnswers);
+      setAnswers(updatedAnswers);
 
       const answer: Answer = {
         answerIsCorrect: "Pending",
@@ -1744,12 +1762,12 @@ ${transcription.text}`,
         answerCorrectAnswer: "na",
       };
 
-      assessmentProgress.addAnswer(answer);
+      addAnswer(answer);
     }
   };
 
   const handleOptionClick = (questionId: number, optionIdx: number) => {
-    assessmentProgress.updateSelectedOption(questionId, optionIdx);
+    updateSelectedOption(questionId, optionIdx);
 
     let currentQue: Question | undefined;
     if (currentSection === "general") {
@@ -1768,7 +1786,7 @@ ${transcription.text}`,
 
     // Update answers object
     if (questionType === "MCQ") {
-      assessmentProgress.updateAnswer(questionId, `Option${optionIdx + 1}`);
+      updateAnswer(questionId, `Option${optionIdx + 1}`);
     }
 
     const answer: Answer = {
@@ -1798,9 +1816,9 @@ ${transcription.text}`,
     };
 
     if (isGeneralQuestion) {
-      assessmentProgress.addGeneralAnswer(answer);
+      addGeneralAnswer(answer);
     } else {
-      assessmentProgress.addAnswer(answer);
+      addAnswer(answer);
     }
   };
 
@@ -1811,7 +1829,7 @@ ${transcription.text}`,
   const getAssesmentQuestions = () => {
     try {
       setIsloading(true);
-      assessmentProgress.startAssessment(); // Mark as started
+      startAssessment(); // Mark as started
       getGeneralQuestions();
     } catch {
       setIsloading(false);
@@ -1846,11 +1864,11 @@ ${transcription.text}`,
         .then((responseJson) => {
           // console.log("General Questions Response: ", JSON.stringify(responseJson));
           if (responseJson[0].data && responseJson[0].data.length > 0) {
-            assessmentProgress.setArrGeneralQuestions(responseJson[0].data);
+            setArrGeneralQuestions(responseJson[0].data);
             const newAnswers = Object.fromEntries(
               responseJson[0].data.map((q: Question) => [q.queID, ""]),
             );
-            assessmentProgress.setAnswers({
+            setAnswers({
               ...answers,
               ...newAnswers,
             });
@@ -1898,7 +1916,7 @@ ${transcription.text}`,
             const newAnswers = Object.fromEntries(
               responseJson[0].data.map((q: Question) => [q.queID, ""]),
             );
-            assessmentProgress.setAnswers({
+            setAnswers({
               ...answers,
               ...newAnswers,
             });
@@ -1926,7 +1944,7 @@ ${transcription.text}`,
 
             setIsloading(false);
             setIsPreModalOpen(false);
-            assessmentProgress.setTimeRemaining(1200);
+            setTimeRemaining(1200);
           } else {
             setIsloading(false);
             setIsPreModalOpen(false);
@@ -1947,7 +1965,7 @@ ${transcription.text}`,
     event: React.ChangeEvent<HTMLTextAreaElement>,
     questionId: number,
   ) => {
-    assessmentProgress.updateAnswer(questionId, event.target.value);
+    updateAnswer(questionId, event.target.value);
 
     const answer: Answer = {
       answerIsCorrect: "Pending",
@@ -1957,14 +1975,14 @@ ${transcription.text}`,
       answerCorrectAnswer: "na",
     };
 
-    assessmentProgress.addAnswer(answer);
+    addAnswer(answer);
   };
 
   const handleQuestionClick = (index: number) => {
     if (currentSection === "general") {
       return;
     }
-    assessmentProgress.setCurrentQuestionIndex(index);
+    setCurrentQuestionIndex(index);
   };
 
   if (isloading) {

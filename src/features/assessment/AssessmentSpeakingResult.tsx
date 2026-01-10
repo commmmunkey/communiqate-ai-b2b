@@ -17,7 +17,7 @@ interface CalculatedScores {
 
 const AssessmentSpeakingResult = () => {
   const navigate = useNavigate();
-  const { assessmentSpeakingEvaluation, assessmentProgress } = useStore();
+  const { assessmentSpeakingEvaluation, resetAssessment } = useStore();
   const [calculatedScores, setCalculatedScores] =
     useState<CalculatedScores | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -266,7 +266,7 @@ const AssessmentSpeakingResult = () => {
       await submitAssessmentToAPI();
 
       // Reset Zustand assessment progress state after successful submission
-      assessmentProgress.resetAssessment();
+      resetAssessment();
 
       toast.success("Assessment submitted successfully!");
       console.log("Assessment scores submitted successfully.");
